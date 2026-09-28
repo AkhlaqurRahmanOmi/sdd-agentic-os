@@ -1,0 +1,12 @@
+{
+  "name": "sdd",
+  "version": "0.0.0",
+  "description": "Spec-driven development harness. Phase 0: cost measurement.",
+  "type": "module",
+  "bin": { "sdd": "bin/sdd.js" },
+  "files": ["bin", "src"],
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\""
+  }
+}

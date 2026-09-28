@@ -1,0 +1,5 @@
+{"type":"system","subtype":"init","cwd":"/repo","session_id":"sess-2","model":"claude-opus-5"}
+not json at all, the CLI writes diagnostics here sometimes
+{"type":"assistant","message":{"model":"claude-opus-5","content":[{"type":"tool_use","name":"Read","input":{"file_path":"/repo/src/a.js"}},{"type":"tool_use","name":"Read","input":{"file_path":"/repo/src/b.js"}}]},"session_id":"sess-2"}
+{"type":"assistant","message":{"model":"claude-opus-5","content":[{"type":"tool_use","name":"Read","input":{"file_path":"/repo/src/a.js"}},{"type":"tool_use","name":"Bash","input":{"command":"ls"}}]},"session_id":"sess-2"}
+{"duration_api_ms":8000,"session_id":"sess-2","total_cost_usd":0.4213,"usage":{"output_tokens_details":{"thinking_tokens":1500},"input_tokens":2000,"cache_creation_input_tokens":3000,"cache_read_input_tokens":40000,"output_tokens":5000},"modelUsage":{"claude-opus-5":{"inputTokens":2000}},"terminal_reason":"end_turn","is_error":false,"num_turns":7,"subtype":"success","type":"result","duration_ms":12000}

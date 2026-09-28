@@ -14,6 +14,8 @@ import { invokeAgent } from '../agent/invoke.js';
 import { loadConfig } from '../spec/config.js';
 import { parseArgs } from './cost.js';
 
+// Short, because a probe that waits as long as a real run is not a probe.
+const PROBE_TIMEOUT_MS = 60_000;
 const PROBE_PROMPT = 'Reply with exactly the word: ok';
 const PROBE_SCHEMA = {
   type: 'object',
@@ -73,6 +75,7 @@ export async function doctorCommand(
       driver: driver.name,
       config,
       cwd: root,
+      timeoutMs: PROBE_TIMEOUT_MS,
       stderr: { write() {} },
     });
     findings.push({ name: 'runs and returns text', ok: Boolean(ran.text), detail: ran.text?.slice(0, 60) });
@@ -101,7 +104,7 @@ export async function doctorCommand(
   if (driver.capabilities.schema) {
     try {
       const { text } = await invokeAgent({
-        prompt: 'Return JSON with a single key "word" whose value is "ok".',
+        prompt: 'Return JSON with a single key \"word\" whose value is \"ok\".',
         schema: PROBE_SCHEMA,
         driver: driver.name,
         config,

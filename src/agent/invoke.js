@@ -11,6 +11,11 @@ import { resolveBin, resolveDriver } from './drivers/index.js';
 
 export class AgentError extends Error {}
 
+// A CLI that cannot reach its API may retry forever rather than exit. Without
+// a ceiling every caller inherits that hang -- including `sdd doctor`, whose
+// entire job is to report such a failure rather than reproduce it.
+export const DEFAULT_AGENT_TIMEOUT_MS = 900_000;
+
 export async function invokeAgent({
   prompt,
   model,
@@ -20,6 +25,7 @@ export async function invokeAgent({
   config = {},
   driver: driverName = null,
   bin: binOverride = null,
+  timeoutMs = DEFAULT_AGENT_TIMEOUT_MS,
   stderr = process.stderr,
 }) {
   const driver = resolveDriver({ name: driverName, config });
@@ -31,15 +37,48 @@ export async function invokeAgent({
   const effectiveTools = driver.capabilities.allowedTools ? allowedTools : null;
 
   const parser = driver.createParser();
+  // `detached` puts the agent in its own process group. Several CLIs are a
+  // thin wrapper that spawns a native binary, and signalling only the wrapper
+  // leaves the grandchild alive still holding stdout open — the run then
+  // never ends even though it was killed.
   const child = spawn(bin, driver.buildArgs({ prompt, model, schema: effectiveSchema, allowedTools: effectiveTools }), {
     cwd,
     stdio: ['ignore', 'pipe', 'inherit'],
+    detached: true,
   });
 
   const lines = createInterface({ input: child.stdout, crlfDelay: Infinity });
   lines.on('line', (line) => parser.handleLine(line));
 
+  let timedOut = false;
+  const killTree = () => {
+    try {
+      process.kill(-child.pid, 'SIGKILL');
+    } catch {
+      // The group is already gone, or this platform has no process groups.
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        /* already dead */
+      }
+    }
+    // readline holds the loop open while any descendant keeps the pipe alive,
+    // so close the stream rather than waiting for an EOF that may not come.
+    child.stdout?.destroy();
+  };
+
+  const timer = setTimeout(() => {
+    timedOut = true;
+    killTree();
+  }, timeoutMs);
+
   const exitCode = await new Promise((resolve, reject) => {
+    // With the stream destroyed on timeout, 'close' may not arrive; settle on
+    // whichever of the two comes first.
+    if (timedOut) resolve(null);
+    child.stdout.on('close', () => {
+      if (timedOut) resolve(null);
+    });
     child.on('error', (err) => {
       reject(
         err.code === 'ENOENT'
@@ -50,10 +89,21 @@ export async function invokeAgent({
       );
     });
     child.on('close', (code) => {
+      clearTimeout(timer);
       lines.close();
       resolve(code ?? 0);
     });
+  }).catch((err) => {
+    clearTimeout(timer);
+    throw err;
   });
+
+  if (timedOut) {
+    throw new AgentError(
+      `\`${bin}\` did not finish within ${Math.round(timeoutMs / 1000)}s and was killed. ` +
+        'A CLI that cannot reach its API often retries indefinitely rather than exiting.',
+    );
+  }
 
   const result = parser.result();
   if (!result) throw new AgentError('agent produced no result event');

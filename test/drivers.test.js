@@ -153,3 +153,20 @@ test('records written before drivers existed still count as measured', () => {
   };
   assert.equal(aggregate([legacy]).rows[0].n, 1);
 });
+
+test('a hanging agent is killed at the timeout instead of hanging the caller', async () => {
+  const hanging = path.join(here, 'fixtures', 'fake-hanging-agent.js');
+  const started = Date.now();
+  await assert.rejects(
+    invokeAgent({
+      prompt: 'p',
+      driver: 'generic',
+      bin: hanging,
+      timeoutMs: 1500,
+      stderr: sink(),
+    }),
+    /did not finish within 2s and was killed/,
+  );
+  // The grandchild holding stdout open must not keep this alive either.
+  assert.ok(Date.now() - started < 12_000, 'timeout did not take effect promptly');
+});

@@ -225,6 +225,12 @@ succeeds, usage comes back empty, and `sdd cost` silently under-records.
 
 It costs one small model call. That is the price of knowing.
 
+Probes time out at 60s and agent runs at 15 minutes. A CLI that cannot reach
+its API often retries forever rather than exiting, and a health check that
+inherits that hang is not a health check. Agents are spawned in their own
+process group, because several are a thin wrapper around a native binary and
+signalling only the wrapper leaves the grandchild alive holding stdout open.
+
 The `codex` driver is marked **unverified**: its flags and event names were
 read out of codex-cli 0.158.0, but no successful run was possible where it was
 written, so the nesting of the usage fields is unconfirmed. It therefore

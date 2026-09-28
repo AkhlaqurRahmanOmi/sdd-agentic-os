@@ -9,6 +9,14 @@ import { readFile } from 'node:fs/promises';
 import { configPath } from './paths.js';
 
 export const DEFAULT_CONFIG = {
+  // Which CLI runs the agent, and how to read what it prints.
+  // "generic" works with any CLI that takes a prompt and prints text, but
+  // reports no token usage — those runs are recorded as unmeasured.
+  agent: {
+    driver: 'claude-code',
+    bin: 'claude',
+    args: '',
+  },
   triage: {
     model: 'claude-haiku-4-5',
     // A "small" ticket whose diff exceeds either of these was misclassified.

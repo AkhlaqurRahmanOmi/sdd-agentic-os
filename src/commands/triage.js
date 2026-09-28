@@ -33,6 +33,8 @@ export async function triageCommand(
     model: config.triage.model,
     schema: TRIAGE_SCHEMA,
     cwd: root,
+    config,
+    driver: typeof f.driver === 'string' ? f.driver : null,
     stderr,
   });
 

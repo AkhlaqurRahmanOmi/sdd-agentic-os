@@ -6,6 +6,7 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createInterface } from 'node:readline';
 import { createStreamParser } from './stream.js';
+import { resolveDriver } from '../agent/drivers/index.js';
 import { SCHEMA, append, assertValidId, costDir } from './store.js';
 
 export const TICKET_CLASSES = ['bug', 'mid', 'feature', 'arch'];
@@ -20,6 +21,8 @@ export async function runWrapped({
   stderr = process.stderr,
   keepStream = true,
   force = false,
+  driver: driverName = null,
+  config = {},
 }) {
   assertValidId(id);
   if (!TICKET_CLASSES.includes(ticketClass)) {
@@ -29,7 +32,8 @@ export async function runWrapped({
 
   await checkAssignment({ id, ticketClass, phase, root, stderr, force });
 
-  const parser = createStreamParser();
+  const driver = resolveDriver({ name: driverName, config });
+  const parser = driver.capabilities.usage ? createStreamParser() : null;
   const startedAt = new Date();
   const startedMs = Date.now();
 
@@ -52,7 +56,7 @@ export async function runWrapped({
   lines.on('line', (line) => {
     stdout.write(`${line}\n`);
     if (rawSink) rawSink.write(`${line}\n`);
-    parser.handleLine(line);
+    parser?.handleLine(line);
   });
 
   const exitCode = await new Promise((resolve, reject) => {
@@ -64,16 +68,50 @@ export async function runWrapped({
   });
   if (rawSink) await new Promise((resolve) => rawSink.end(resolve));
 
-  const summary = parser.summarize();
+  const summary = parser?.summarize() ?? null;
   const wrapperWallMs = Date.now() - startedMs;
 
-  // No result event means no usage numbers. Recording a zero here would look
-  // like a free run and quietly drag the baseline down, so refuse instead.
-  if (!summary) {
+  // A driver that reports usage and produced none means the command did not
+  // run the way the wrapper expects. Recording a zero would look like a free
+  // run and quietly drag the baseline down, so refuse instead.
+  if (driver.capabilities.usage && !summary) {
     throw new Error(
       'no result event in output — the wrapped command must run with ' +
         '`--output-format stream-json` (and `--verbose` for `claude -p`)',
     );
+  }
+
+  // A driver that reports no usage is a different thing from a run that
+  // produced none: the run happened, it simply cannot be measured. It is
+  // recorded as unmeasured and excluded from every aggregate, rather than
+  // recorded as zero.
+  if (!summary) {
+    const unmeasured = {
+      schema: SCHEMA,
+      kind: 'run',
+      id,
+      class: ticketClass,
+      phase,
+      started_at: startedAt.toISOString(),
+      driver: driver.name,
+      measured: false,
+      tokens: null,
+      cost_usd: null,
+      wall_ms: wrapperWallMs,
+      turns: null,
+      files_read: null,
+      exit_code: exitCode,
+      ok: exitCode === 0,
+      command,
+    };
+    const unmeasuredFile = await append(unmeasured, root);
+    stderr.write(
+      `\n[sdd cost] ${id} (${ticketClass}/${phase}) — UNMEASURED\n` +
+        `  the "${driver.name}" driver reports no token usage, so this run\n` +
+        '  cannot enter a baseline. It is recorded and excluded from aggregates.\n' +
+        `  recorded   ${unmeasuredFile}\n\n`,
+    );
+    return { record: unmeasured, file: unmeasuredFile, exitCode };
   }
 
   const record = {
@@ -83,6 +121,8 @@ export async function runWrapped({
     class: ticketClass,
     phase,
     started_at: startedAt.toISOString(),
+    driver: driver.name,
+    measured: true,
     model: summary.model,
     session_id: summary.sessionId,
     tokens: summary.tokens,

@@ -133,6 +133,9 @@ A stale index is worse than none.
 
 Everything else rides the generic floor with no adapter code.
 
+*(Contradicted in practice — see Found, below. Agent invocation now goes
+through a driver seam: `claude-code` and `generic`.)*
+
 **Kill:** week 7 and nobody but you uses it → personal tool. Drop npm and the
 marketplace, keep the repo and a deploy script, iterate weekly.
 

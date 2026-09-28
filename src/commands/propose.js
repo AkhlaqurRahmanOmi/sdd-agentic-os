@@ -36,6 +36,8 @@ export async function proposeCommand(
     prompt: proposePrompt(ticket, area, await readIfPresent(constitutionPath(root))),
     model: config.propose.model,
     cwd: root,
+    config,
+    driver: typeof f.driver === 'string' ? f.driver : null,
     stderr,
   });
 

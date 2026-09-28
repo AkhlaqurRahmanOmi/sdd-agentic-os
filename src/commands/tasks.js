@@ -56,6 +56,8 @@ export async function tasksCommand(
     model: config.tasks.model,
     schema: TASKS_SCHEMA,
     cwd: root,
+    config,
+    driver: typeof f.driver === 'string' ? f.driver : null,
     stderr,
   });
 

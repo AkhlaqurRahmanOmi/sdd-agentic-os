@@ -31,7 +31,11 @@ export async function writeBudgets(budgets, root = process.cwd()) {
 // The most recent successful run is what a ceiling is measured against; an
 // errored run has no meaningful total.
 export async function latestRun(id, root = process.cwd()) {
-  const runs = (await readRecords(id, root)).filter((r) => r.kind === 'run' && r.ok);
+  // An unmeasured run has no token total, so it can neither set nor breach a
+  // ceiling. Treating it as zero would silently ratchet every budget to nothing.
+  const runs = (await readRecords(id, root)).filter(
+    (r) => r.kind === 'run' && r.ok && r.measured !== false,
+  );
   return runs.length ? runs[runs.length - 1] : null;
 }
 

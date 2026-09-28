@@ -16,8 +16,12 @@ export function totalTokens(t) {
 }
 
 export function aggregate(records) {
-  const runs = records.filter((r) => r.kind === 'run' && r.ok);
+  // `measured === false` marks a run from a driver that reports no usage.
+  // Older records predate the field and were all measured.
+  const isMeasured = (r) => r.measured !== false;
+  const runs = records.filter((r) => r.kind === 'run' && r.ok && isMeasured(r));
   const failed = records.filter((r) => r.kind === 'run' && !r.ok);
+  const unmeasured = records.filter((r) => r.kind === 'run' && r.ok && !isMeasured(r));
   const notes = records.filter((r) => r.kind === 'annotation');
 
   const groups = new Map();
@@ -63,7 +67,7 @@ export function aggregate(records) {
   }
 
   rows.sort((a, b) => a.class.localeCompare(b.class) || a.phase.localeCompare(b.phase));
-  return { rows, failed, runs };
+  return { rows, failed, runs, unmeasured };
 }
 
 function pad(value, width, right = false) {
@@ -86,8 +90,16 @@ function table(headers, rows) {
 
 const n = (v) => (v == null ? '-' : Math.round(v).toLocaleString('en-US'));
 
-export function formatReport({ rows, failed }) {
-  if (!rows.length) return 'No successful runs recorded yet.\n';
+export function formatReport({ rows, failed, unmeasured = [] }) {
+  const unmeasuredNote = unmeasured.length
+    ? `\n\n${unmeasured.length} run(s) excluded as unmeasured — driver(s) ` +
+      `reporting no token usage: ${[...new Set(unmeasured.map((r) => r.driver ?? 'unknown'))].join(', ')}.` +
+      '\nThose runs happened; they cannot enter a baseline.'
+    : '';
+
+  if (!rows.length) {
+    return `No measured runs recorded yet.${unmeasuredNote}\n`;
+  }
 
   const out = [];
   out.push('Token totals by ticket class (median, range across tickets)\n');
@@ -151,6 +163,7 @@ export function formatReport({ rows, failed }) {
         failed.map((r) => `${r.id}/${r.phase}`).join(', '),
     );
   }
+  out.push(unmeasuredNote);
 
   const phases = [...new Set(rows.map((r) => r.phase))];
   if (phases.length > 1) {

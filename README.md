@@ -167,6 +167,40 @@ tickets have actually been measured. `budget set` lowers a ceiling freely and
 refuses to raise one without `--raise` — a ceiling that quietly follows the
 last run upward is a log, not a budget.
 
+## Which agent runs it
+
+```yaml
+# .sdd/config.yaml
+agent:
+  driver: claude-code     # or: generic
+  bin: claude
+  args: ''                # generic only, e.g. 'exec --model {model} {prompt}'
+```
+
+| Driver | Token usage | Schema-constrained output | Tool allowlist |
+|---|---|---|---|
+| `claude-code` | yes | yes (`--json-schema`) | yes |
+| `generic` | **no** | no — asked for in the prompt, parsed on the way back | no |
+
+`generic` runs any CLI that takes a prompt and prints text. Where the CLI
+cannot constrain output to a schema, the prompt asks for JSON and `sdd`
+recovers it from surrounding prose, failing loudly if there is none.
+
+**What `generic` cannot do is measure.** It reports no token counts, so
+`sdd cost` records those runs as **unmeasured** — not as zero. A zero would
+read as a free run and drag a baseline down, which is the same failure the
+no-result-event refusal already guards against. Unmeasured runs are recorded,
+excluded from every aggregate, and named in `sdd cost report`. They also
+cannot set or breach a budget ceiling.
+
+So: the spec pipeline works with any agent. Phase 0 measurement works only
+where the harness reports usage, and today that is Claude Code.
+
+Adding a native driver for another harness is one file in
+`src/agent/drivers/`. It needs a probe against the real CLI first — guessing
+flags produces a driver that silently does nothing, which is worse than
+falling back to `generic`.
+
 ## Distribution
 
 ```sh

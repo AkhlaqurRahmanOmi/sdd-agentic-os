@@ -60,5 +60,5 @@ test('comparing phases flags that the runs were not matched', () => {
 });
 
 test('an empty store reports nothing rather than an empty table', () => {
-  assert.match(formatReport(aggregate([])), /No successful runs recorded yet/);
+  assert.match(formatReport(aggregate([])), /No measured runs recorded yet/);
 });

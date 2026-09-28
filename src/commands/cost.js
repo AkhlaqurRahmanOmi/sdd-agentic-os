@@ -94,6 +94,8 @@ export async function costCommand(
       stderr,
       keepStream: flags['keep-stream'] !== false,
       force: flags.force === true,
+      driver: typeof flags.driver === 'string' ? flags.driver : null,
+      config: await (await import('../spec/config.js')).loadConfig(root),
     });
     return typeof exitCode === 'number' ? exitCode : 1;
   }

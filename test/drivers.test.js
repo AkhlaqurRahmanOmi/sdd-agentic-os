@@ -32,7 +32,7 @@ test('config selects the driver, and an explicit name beats config', () => {
 });
 
 test('an unknown driver names the known ones instead of failing obscurely', () => {
-  assert.throws(() => resolveDriver({ name: 'nope', env }), /known: claude-code, generic/);
+  assert.throws(() => resolveDriver({ name: 'nope', env }), /known: claude-code, codex, generic/);
 });
 
 test('the generic driver has no default binary, so one must be configured', () => {
@@ -41,9 +41,27 @@ test('the generic driver has no default binary, so one must be configured', () =
     /no default binary/,
   );
   assert.equal(
-    resolveBin({ driver: resolveDriver({ name: 'generic', env }), config: { agent: { bin: 'codex' } }, env }),
+    resolveBin({
+      driver: resolveDriver({ name: 'generic', env }),
+      config: { agent: { driver: 'generic', bin: 'codex' } },
+      env,
+    }),
     'codex',
   );
+});
+
+test('a configured binary does not leak to a driver it was not meant for', () => {
+  // `--driver codex` against a claude-code config used to run `claude --json`,
+  // which fails in a way that reads like the driver being wrong.
+  const config = { agent: { driver: 'claude-code', bin: 'claude' } };
+  assert.equal(resolveBin({ driver: resolveDriver({ name: 'codex', env }), config, env }), 'codex');
+  assert.equal(resolveBin({ driver: resolveDriver({ name: 'claude-code', env }), config, env }), 'claude');
+});
+
+test('SDD_CLAUDE_BIN only applies to the claude-code driver', () => {
+  const e = { SDD_CLAUDE_BIN: '/tmp/fake-claude' };
+  assert.equal(resolveBin({ driver: resolveDriver({ name: 'claude-code', env: e }), env: e }), '/tmp/fake-claude');
+  assert.equal(resolveBin({ driver: resolveDriver({ name: 'codex', env: e }), env: e }), 'codex');
 });
 
 test('claude-code builds the flags it needs, and only those', () => {

@@ -152,9 +152,19 @@ marketplace, keep the repo and a deploy script, iterate weekly.
   no adapter code" does not hold. Every harness that does not read AGENTS.md
   needs its own directory.
 
+**Resolved:**
+- Codex discovery: it reads the repository's `AGENTS.md`; its skills are
+  user-level with no project-level directory, so `install --targets codex`
+  no longer writes `.codex/skills/` — those files were read by nothing.
+- `sdd doctor` probes any driver against its real CLI and reports which
+  declared capabilities actually work, which generalises per-harness
+  verification instead of needing each CLI present to write the driver.
+
 **Still unresolved:**
-- Codex discovery is unverified. Files are generated for it; nothing proves
-  they are read. The nightly says so rather than claiming a pass.
+- The `codex` driver is written from verified flags and event names but an
+  unverified usage nesting, so it searches for the fields rather than
+  hardcoding a path, and declares itself unverified until `sdd doctor` passes
+  against it with working credentials.
 - The kill criterion fires in the same week this milestone ships, so it still
   has no data to fire on.
 - The npm package name is `sdd-agentic-os` and unpublished. Nothing has been

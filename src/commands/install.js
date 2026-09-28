@@ -11,7 +11,12 @@ import { parseArgs } from './cost.js';
 export const TARGETS = {
   generic: { label: 'AGENTS.md + .agents/skills/', skillDir: '.agents/skills' },
   claude: { label: 'Claude Code', skillDir: '.claude/skills' },
-  codex: { label: 'Codex', skillDir: '.codex/skills' },
+  // Codex reads the repository's AGENTS.md; its skills are user-level
+  // (~/.codex/skills), with no project-level skills directory. Writing
+  // .codex/skills/ generated files nothing reads — the same mistake as
+  // assuming .agents/skills/ was a universal floor. AGENTS.md is written for
+  // every target, so this one needs no directory of its own.
+  codex: { label: 'Codex (AGENTS.md only)', skillDir: null },
 };
 
 export async function installCommand(
@@ -36,6 +41,7 @@ export async function installCommand(
   results.push(await writeGenerated('AGENTS.md', renderAgentsMd(), { root, manifest }));
   for (const target of requested) {
     const { skillDir } = TARGETS[target];
+    if (!skillDir) continue;
     for (const skill of SKILLS) {
       results.push(
         await writeGenerated(`${skillDir}/${skill.name}/SKILL.md`, renderSkill(skill), {

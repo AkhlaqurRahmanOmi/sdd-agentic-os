@@ -177,10 +177,11 @@ agent:
   args: ''                # generic only, e.g. 'exec --model {model} {prompt}'
 ```
 
-| Driver | Token usage | Schema-constrained output | Tool allowlist |
-|---|---|---|---|
-| `claude-code` | yes | yes (`--json-schema`) | yes |
-| `generic` | **no** | no — asked for in the prompt, parsed on the way back | no |
+| Driver | Token usage | Schema-constrained output | Tool allowlist | Verified |
+|---|---|---|---|---|
+| `claude-code` | yes | yes (`--json-schema`) | yes | yes — `sdd doctor` passes |
+| `codex` | yes | yes (`--output-schema`, a file) | no (`--sandbox`) | **no** — see below |
+| `generic` | **no** | no — asked for in the prompt, parsed on the way back | no | n/a |
 
 `generic` runs any CLI that takes a prompt and prints text. Where the CLI
 cannot constrain output to a schema, the prompt asks for JSON and `sdd`
@@ -196,9 +197,29 @@ cannot set or breach a budget ceiling.
 So: the spec pipeline works with any agent. Phase 0 measurement works only
 where the harness reports usage, and today that is Claude Code.
 
+### `sdd doctor`
+
+```sh
+sdd doctor --driver codex
+```
+
+Runs a trivial prompt against the real CLI and reports which of the
+capabilities a driver *declares* actually work. It exists because a driver
+written from flags alone can look healthy while reporting nothing: the run
+succeeds, usage comes back empty, and `sdd cost` silently under-records.
+
+It costs one small model call. That is the price of knowing.
+
+The `codex` driver is marked **unverified**: its flags and event names were
+read out of codex-cli 0.158.0, but no successful run was possible where it was
+written, so the nesting of the usage fields is unconfirmed. It therefore
+searches the event for those fields rather than hardcoding a path, and
+`doctor` says the driver is unverified until a real run passes. Run it once
+with working credentials and the flag can come off.
+
 Adding a native driver for another harness is one file in
-`src/agent/drivers/`. It needs a probe against the real CLI first — guessing
-flags produces a driver that silently does nothing, which is worse than
+`src/agent/drivers/`. Probe the real CLI first, then let `doctor` confirm it —
+guessed flags produce a driver that silently does nothing, which is worse than
 falling back to `generic`.
 
 ## Distribution
@@ -210,7 +231,12 @@ npx sdd-agentic-os install --targets generic,claude,codex
 
 Generates `AGENTS.md` (pointers only, under the 150-line budget, enforced by a
 test) and one skill per command under `.agents/skills/`, plus a directory per
-named harness.
+harness that has one.
+
+`--targets codex` writes **no** skills directory. Codex reads the repository's
+`AGENTS.md`; its skills are user-level (`~/.codex/skills`) with no
+project-level equivalent, so writing `.codex/skills/` produced files nothing
+reads — the same mistake as assuming `.agents/skills/` was a universal floor.
 
 ### The adapter is not optional for Claude Code
 

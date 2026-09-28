@@ -5,14 +5,16 @@
 // then claude-code. The same order applies to the binary.
 
 import { claudeCode } from './claude-code.js';
+import { codex } from './codex.js';
 import { makeGenericDriver } from './generic.js';
 
-export const DRIVER_NAMES = ['claude-code', 'generic'];
+export const DRIVER_NAMES = ['claude-code', 'codex', 'generic'];
 
 export function resolveDriver({ name, config = {}, env = process.env } = {}) {
   const chosen = name ?? env.SDD_AGENT_DRIVER ?? config.agent?.driver ?? 'claude-code';
 
   if (chosen === 'claude-code') return claudeCode;
+  if (chosen === 'codex') return codex;
   if (chosen === 'generic') return makeGenericDriver({ argsTemplate: config.agent?.args ?? null });
 
   throw new Error(
@@ -23,7 +25,15 @@ export function resolveDriver({ name, config = {}, env = process.env } = {}) {
 }
 
 export function resolveBin({ driver, config = {}, env = process.env }) {
-  const bin = env.SDD_CLAUDE_BIN ?? env.SDD_AGENT_BIN ?? config.agent?.bin ?? driver.defaultBin;
+  // `agent.bin` belongs to whichever driver `agent.driver` names. Switching
+  // driver with --driver must not keep the other one's binary: that produced
+  // `codex` running as `claude --json`, which fails in a way that reads like
+  // the driver being wrong rather than the binary.
+  const configuredDriver = config.agent?.driver ?? 'claude-code';
+  const configBin = configuredDriver === driver.name ? config.agent?.bin : null;
+  const claudeBin = driver.name === 'claude-code' ? env.SDD_CLAUDE_BIN : null;
+
+  const bin = env.SDD_AGENT_BIN ?? claudeBin ?? configBin ?? driver.defaultBin;
   if (!bin) {
     throw new Error(
       `the "${driver.name}" driver has no default binary — set agent.bin in ` +

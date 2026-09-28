@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { budgetCommand } from '../src/commands/budget.js';
 import { costCommand } from '../src/commands/cost.js';
+import { doctorCommand } from '../src/commands/doctor.js';
 import { hooksCommand } from '../src/commands/hooks.js';
 import { approveCommand } from '../src/commands/approve.js';
 import { indexCommand } from '../src/commands/index-cmd.js';
@@ -47,12 +48,15 @@ const USAGE = `sdd — spec-driven development harness
                                   Targets: generic, claude, codex.
 
   sdd cost                        Record and report what agent runs cost.
+  sdd doctor [--driver <name>]    Probe the agent CLI and report which
+                                  declared capabilities actually work.
 `;
 
 const COMMANDS = {
   approve: approveCommand,
   budget: budgetCommand,
   cost: costCommand,
+  doctor: doctorCommand,
   hooks: hooksCommand,
   index: indexCommand,
   init: initCommand,

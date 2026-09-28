@@ -124,7 +124,7 @@ test('unmeasured runs are excluded from aggregates and named in the report', () 
   assert.equal(agg.unmeasured.length, 1);
 
   const out = formatReport(agg);
-  assert.match(out, /1 run\(s\) excluded as unmeasured: generic/);
+  assert.match(out, /1 run\(s\) excluded as unmeasured — driver\(s\) reporting no token usage: generic/);
   assert.match(out, /cannot enter a baseline/);
 });
 

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { triageCommand } from '../src/commands/triage.js';
 import { proposeCommand } from '../src/commands/propose.js';
 import { tasksCommand } from '../src/commands/tasks.js';
+import { approveCommand } from '../src/commands/approve.js';
 import { validateCommand } from '../src/commands/validate.js';
 import { initCommand } from '../src/commands/init.js';
 import { changeDir, requirementsPath, taskCardsDir } from '../src/spec/paths.js';
@@ -52,8 +53,9 @@ test('the full pipeline produces a change that validates', async () => {
 
   await triageCommand([], { ...io(root), flags: { ticket, id: 'AUTH-9' } });
   await proposeCommand([], { ...io(root), flags: { id: 'AUTH-9' } });
-  // The fake model leaves an open question, which `tasks` refuses by design.
-  await tasksCommand([], { ...io(root), flags: { id: 'AUTH-9', force: true } });
+  // The fake model leaves an open question, so the gate is bypassed rather
+  // than approved — which is itself the realistic path this test wants.
+  await tasksCommand([], { ...io(root), flags: { id: 'AUTH-9', 'bypass-gate': 'test' } });
 
   const cards = (await readdir(taskCardsDir('AUTH-9', root))).sort();
   assert.deepEqual(cards, ['T01.md', 'T02.md']);
@@ -89,7 +91,7 @@ test('task cards inline their requirement text so they stand alone', async () =>
   const ticket = await ticketAt(root, 't.md', 'Lock out repeated failed logins');
   await triageCommand([], { ...io(root), flags: { ticket, id: 'AUTH-9' } });
   await proposeCommand([], { ...io(root), flags: { id: 'AUTH-9' } });
-  await tasksCommand([], { ...io(root), flags: { id: 'AUTH-9', force: true } });
+  await tasksCommand([], { ...io(root), flags: { id: 'AUTH-9', 'bypass-gate': 'test' } });
 
   const card = await readFile(path.join(taskCardsDir('AUTH-9', root), 'T01.md'), 'utf8');
   assert.match(card, /REQ: REQ-AUTH-001/);
@@ -104,6 +106,12 @@ test('tasks refuses to decompose around unanswered open questions', async () => 
   await triageCommand([], { ...io(root), flags: { ticket, id: 'AUTH-9' } });
   await proposeCommand([], { ...io(root), flags: { id: 'AUTH-9' } });
 
+  // The gate stops it first; once the gate is cleared, the open questions do.
+  await assert.rejects(
+    tasksCommand([], { ...io(root), flags: { id: 'AUTH-9' } }),
+    /have not been reviewed/,
+  );
+  await approveCommand(['--id', 'AUTH-9', '--force', '--by', 'tester'], io(root));
   await assert.rejects(
     tasksCommand([], { ...io(root), flags: { id: 'AUTH-9' } }),
     /open question/,
@@ -150,7 +158,7 @@ test('each phase routes to its configured model', async () => {
   assert.match(propose.stderr.text, /claude-opus-5/);
 
   const tasks = io(root);
-  await tasksCommand([], { ...tasks, flags: { id: 'AUTH-9', force: true } });
+  await tasksCommand([], { ...tasks, flags: { id: 'AUTH-9', 'bypass-gate': 'test' } });
   assert.match(tasks.stderr.text, /claude-sonnet-5/);
 });
 

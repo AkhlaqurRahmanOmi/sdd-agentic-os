@@ -5,7 +5,10 @@ import { TRIAGE_SCHEMA, triagePrompt } from '../agent/prompts.js';
 import { loadConfig } from '../spec/config.js';
 import { changeDir } from '../spec/paths.js';
 import { renderState } from '../spec/render.js';
+import { recordTriage } from '../spec/triage-log.js';
 import { readTicket, requireFlag } from './shared.js';
+import { triageAuditCommand } from './triage-audit.js';
+import { parseArgs } from './cost.js';
 
 // tiny and small never reach the rest of the system — that exit is the only
 // token rule in the plan with benchmark support behind it.
@@ -15,6 +18,12 @@ export async function triageCommand(
   argv,
   { root = process.cwd(), stdout = process.stdout, stderr = process.stderr, flags } = {},
 ) {
+  // `sdd triage audit ...` checks a past decision against the diff it produced.
+  const { positional } = parseArgs(argv);
+  if (positional[0] === 'audit') {
+    return triageAuditCommand(argv.slice(argv.indexOf('audit') + 1), { root, stdout });
+  }
+
   const f = flags ?? requireFlag.parse(argv);
   const ticket = await readTicket(f, root);
   const config = await loadConfig(root);
@@ -27,6 +36,15 @@ export async function triageCommand(
     stderr,
   });
 
+  // Recorded for every class, including the ones that write nothing else.
+  // Without this a tiny/small decision leaves no trace and cannot be audited.
+  if (typeof f.id === 'string') {
+    await recordTriage(
+      { kind: 'decision', id: f.id, class: data.class, area: data.area, reason: data.reason },
+      root,
+    );
+  }
+
   stdout.write(`\nclass: ${data.class}  (area ${data.area})\n${data.reason}\n`);
 
   if (SKIPS_SPEC.has(data.class)) {
@@ -36,7 +54,9 @@ export async function triageCommand(
         .join('\n')}\n\n` +
         'If this turns out to need more than it looked like, re-run triage\n' +
         'rather than improvising a spec: a class that was wrong is worth\n' +
-        'recording, because the thresholds are guesses until tickets correct them.\n',
+        'recording, because the thresholds are guesses until tickets correct them.\n' +
+        '\nAfter it lands: `sdd triage audit --id <id>` checks the decision\n' +
+        'against the diff it actually produced.\n',
     );
     return 0;
   }

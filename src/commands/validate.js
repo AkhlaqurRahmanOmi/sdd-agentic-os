@@ -48,6 +48,17 @@ export async function validateCommand(
 
   const results = [];
   for (const id of ids) results.push(await validateChange(id, root, { execute }));
+
+  // --strict is how a repository chooses to enforce the human gate in CI
+  // without blocking the work that happens when nobody is around to review.
+  if (argv.includes('--strict')) {
+    for (const r of results) {
+      for (const p of r.problems) {
+        if (p.code === 'gate-pending' || p.code === 'gate-bypassed') p.severity = 'error';
+      }
+      r.ok = !r.problems.some((p) => p.severity === 'error');
+    }
+  }
   const constitutionProblems = await validateConstitution(root);
 
   stdout.write(formatProblems(results, constitutionProblems));

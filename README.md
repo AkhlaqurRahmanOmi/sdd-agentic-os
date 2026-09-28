@@ -38,9 +38,20 @@ criteria and never touch the rest of the system — no change directory is
 created. The prompt tells the model that classifying down is the expensive
 mistake, because a misclassified feature skips everything silently.
 
-**propose** writes `requirements.md` in EARS form and reports open questions.
-This is the one human gate. It refuses to overwrite requirements that already
-exist, since a re-propose discards whatever a human reviewed.
+**propose** writes `requirements.md` in EARS form and reports open questions,
+then opens the review gate as `pending`. It refuses to overwrite requirements
+that already exist, since a re-propose discards whatever a human reviewed.
+
+**The gate has a way past it.** `sdd approve --id <id>` records that a human
+read the requirements. When nobody is available — which on a side project is
+most of the time — `sdd tasks --id <id> --bypass-gate "<reason>"` proceeds
+anyway and writes down that it did. A gate with no escape hatch gets routed
+around, and then there is no gate *and* no record that there wasn't one.
+
+A bypass never looks like approval afterwards: `sdd validate` reports
+`gate-bypassed` with the reason, and `sdd validate --strict` makes it an
+error. That way a repository can enforce review in CI without blocking the
+work at 2am. Approving later clears the bypass.
 
 **tasks** writes one card per task. Each card inlines its requirement text
 verbatim, so the agent working it loads the card and nothing else — never the
@@ -50,6 +61,25 @@ than in one reviewed file. `--force` overrides.
 
 Cards name target symbols rather than line numbers. Line anchors go stale on
 the next commit above them; that is the Phase 2 index decision made early.
+
+### Triage misses
+
+A ticket classed tiny or small skips the whole system, so a wrong call leaves
+no trace. After the change lands:
+
+```sh
+sdd triage audit --id <id> [--range <git-range>]
+sdd triage audit rate
+```
+
+compares the decision against the diff it actually produced and records the
+result in `.sdd/triage.jsonl`.
+
+**A miss warns, it never fails.** By the time the diff can be measured the work
+is done; failing there would only teach people to skip triage. The point is the
+dataset — `small_max_files` and `small_max_lines` are guesses until real
+tickets correct them, and `rate` reports the largest miss, which is what
+actually bounds a threshold.
 
 Each phase routes to its own model via `.sdd/config.yaml` — cheap for triage
 and decomposition, not for requirements on brownfield code.

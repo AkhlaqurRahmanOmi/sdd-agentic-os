@@ -10,6 +10,7 @@
 
 import { readFile, readdir } from 'node:fs/promises';
 import { executeEvidence } from './execute.js';
+import { gateProblems, readGate } from './gate.js';
 import {
   REQ_ID,
   TASK_ID,
@@ -19,6 +20,7 @@ import {
   parseTaskCard,
   parseTasksIndex,
 } from './parse.js';
+import { gatePath as gatePathFor } from './gate.js';
 import {
   constitutionPath,
   evidencePath,
@@ -162,6 +164,11 @@ export async function validateChange(id, root = process.cwd(), { execute = false
       warn('stale-evidence', `evidence.md has ${req}, which requirements.md no longer declares`, evidencePath(id, root));
     }
   }
+
+  // A bypassed or unreviewed gate is reported, never silently equivalent to
+  // approval. It warns rather than fails: enforcing it is a repository policy
+  // (`--strict`), not a property of the spec being well-formed.
+  problems.push(...gateProblems(id, await readGate(id, root), gatePathFor(id, root)));
 
   // Opt-in: actually run what the evidence claims. Only worth doing once the
   // shape checks above pass — running a suite to discover a REQ id is

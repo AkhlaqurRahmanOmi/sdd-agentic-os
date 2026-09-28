@@ -6,6 +6,7 @@ import { loadConfig } from '../spec/config.js';
 import { parseRequirements } from '../spec/parse.js';
 import { changeDir, constitutionPath, requirementsPath } from '../spec/paths.js';
 import { renderState } from '../spec/render.js';
+import { pendingGate, writeGate } from '../spec/gate.js';
 import { readIfPresent, readTicket, requireFlag, requireString } from './shared.js';
 
 export async function proposeCommand(
@@ -42,6 +43,7 @@ export async function proposeCommand(
   await writeFile(path.join(changeDir(id, root), 'state.md'), renderState(id, 'proposed'), 'utf8');
 
   const { requirements, openQuestions } = parseRequirements(text);
+  await writeGate(id, pendingGate(openQuestions), root);
   stdout.write(`\nwrote ${file}\n  ${requirements.length} requirement(s)\n`);
   if (openQuestions.length) {
     stdout.write(
@@ -54,8 +56,11 @@ export async function proposeCommand(
   stdout.write(
     `\nRead ${path.relative(root, file)} before going further. This is the ` +
       'human gate;\nevery later phase inlines these requirements verbatim, so a ' +
-      'wrong one\npropagates into every task card.\n\nnext: sdd tasks --id ' +
-      `${id}\n`,
+      'wrong one\npropagates into every task card.\n' +
+      `\nnext: sdd approve --id ${id}    (then sdd tasks --id ${id})\n` +
+      `\nNobody available? \`sdd tasks --id ${id} --bypass-gate "<reason>"\`\n` +
+      'proceeds and records that the gate was not reviewed, rather than\n' +
+      'leaving no trace that it was skipped.\n',
   );
   return 0;
 }

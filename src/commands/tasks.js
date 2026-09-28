@@ -7,6 +7,7 @@ import { REQ_ID, parseRequirements } from '../spec/parse.js';
 import { changeDir, evidencePath, requirementsPath, taskCardsDir, tasksIndexPath } from '../spec/paths.js';
 import { renderEvidenceSkeleton, renderState, renderTaskCard, renderTasksIndex } from '../spec/render.js';
 import { readIfPresent, requireFlag, requireString } from './shared.js';
+import { bypassedGate, readGate, writeGate } from '../spec/gate.js';
 
 export async function tasksCommand(
   argv,
@@ -21,9 +22,28 @@ export async function tasksCommand(
   const reqIds = requirements.map((r) => r.id).filter((r) => REQ_ID.test(r));
   if (!reqIds.length) throw new Error('requirements.md declares no well-formed requirements');
 
+  // The human gate. Proceeding without review is always possible, but it takes
+  // a flag and a reason, and it leaves a record that outlives this command.
+  const gate = await readGate(id, root);
+  const bypass = typeof f['bypass-gate'] === 'string' ? f['bypass-gate'] : null;
+
+  if (gate?.state === 'pending' && !bypass) {
+    throw new Error(
+      `${id}: requirements have not been reviewed.\n` +
+        `  sdd approve --id ${id}                      once a human has read them\n` +
+        `  sdd tasks --id ${id} --bypass-gate "<why>"  to proceed without review\n` +
+        'A bypass is recorded and reported by `sdd validate`; it does not look\n' +
+        'like approval afterwards.',
+    );
+  }
+  if (bypass) {
+    await writeGate(id, bypassedGate(bypass, openQuestions), root);
+    stderr.write(`[sdd] gate bypassed for ${id}: ${bypass}\n`);
+  }
+
   // Decomposing against unanswered questions bakes the guess into every card,
   // where it is far more expensive to find than in one reviewed file.
-  if (openQuestions.length && f.force !== true) {
+  if (openQuestions.length && f.force !== true && !bypass) {
     throw new Error(
       `${openQuestions.length} open question(s) are still unanswered in ` +
         `requirements.md:\n${openQuestions.map((q) => `  - ${q}`).join('\n')}\n` +

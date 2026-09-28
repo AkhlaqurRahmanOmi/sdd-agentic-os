@@ -69,12 +69,16 @@ No design phase. No archive. No subagents.
 **Kill:** if feature tickets don't beat baseline, the problem is triage or
 cards. Do not add a design phase to fix it.
 
-**Unresolved:**
-- The human gate after `propose` is the real cost center on a side project.
-  No timeout, no auto-proceed-with-flagged-assumptions path is specified.
-- Misclassified feature-as-small skips the whole system silently. Cheap
-  detector: log a triage miss when a "small" ticket's diff exceeds N files
-  or M lines.
+**Resolved:**
+- The gate after `propose` has an escape hatch. `sdd approve` records review;
+  `sdd tasks --bypass-gate "<reason>"` proceeds without it and writes down
+  that it did. `sdd validate` reports a bypass, `--strict` makes it an error.
+  A gate with no way past it gets routed around, leaving no gate and no record
+  that there wasn't one.
+- `sdd triage audit` compares a decision against the diff it produced and
+  records misses to `.sdd/triage.jsonl`. It warns and never fails: the work is
+  already done by then, and the value is the dataset that tunes the
+  thresholds.
 
 ---
 

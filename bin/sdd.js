@@ -2,6 +2,7 @@
 import { budgetCommand } from '../src/commands/budget.js';
 import { costCommand } from '../src/commands/cost.js';
 import { hooksCommand } from '../src/commands/hooks.js';
+import { approveCommand } from '../src/commands/approve.js';
 import { indexCommand } from '../src/commands/index-cmd.js';
 import { installCommand } from '../src/commands/install.js';
 import { initCommand } from '../src/commands/init.js';
@@ -18,13 +19,24 @@ const USAGE = `sdd — spec-driven development harness
                                   Classify a ticket. tiny and small exit here
                                   with acceptance criteria and never touch the
                                   rest of the system.
+  sdd triage audit --id <id> [--range <r>]
+                                  Check a past decision against the diff it
+                                  produced. Warns on a miss, never fails.
+  sdd triage audit rate           Miss rate across every audited decision.
   sdd propose --id <change>       Write EARS requirements. One human gate here.
-  sdd tasks --id <change>         Decompose into self-contained task cards.
+  sdd approve --id <change> [--by <name>]
+                                  Record that a human reviewed them.
+  sdd tasks --id <change> [--bypass-gate "<why>"]
+                                  Decompose into self-contained task cards.
+                                  --bypass-gate proceeds without review and
+                                  records that it did.
   sdd validate [--change <id>|--staged] [--execute]
                                   Every requirement has evidence, every task
                                   maps to a requirement. Exits 1 otherwise.
                                   --execute runs the recorded evidence
                                   commands instead of trusting them.
+                                  --strict makes an unreviewed or bypassed
+                                  gate an error.
   sdd index build|check           Traceability graph: REQ -> tasks -> code.
                                   check exits 1 when an anchor no longer
                                   resolves or the index is out of date.
@@ -38,6 +50,7 @@ const USAGE = `sdd — spec-driven development harness
 `;
 
 const COMMANDS = {
+  approve: approveCommand,
   budget: budgetCommand,
   cost: costCommand,
   hooks: hooksCommand,

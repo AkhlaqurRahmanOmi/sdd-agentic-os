@@ -19,13 +19,21 @@ output, thinking tokens, model, wall time, files read, turn count.
 **Conditional:** if file-reading is not in the top two token sinks, the
 traceability index defers to Phase 4 or is dropped.
 
-**Unresolved before this starts:**
-- The Phase 1 gate re-runs these same tickets. They will be done by then —
-  different repo state, known answer. Decide the comparison design now:
-  matched split (5 baseline / 5 SDD) or pinned-SHA replay with n≥3.
-- `sdd cost` records tokens only. "Cheaper *or better*" is the kill criterion
-  and "better" is undefined. Decide whether to also record human correction
-  turns and follow-up-fix-required per ticket.
+**Decided:**
+- Comparison design is a **matched split**: each ticket runs in exactly one
+  arm, arms fixed before any ticket runs via `sdd cost plan`, which writes
+  `.sdd/cost/assignment.json`. `sdd cost run` refuses a ticket in the wrong
+  arm, so a post-hoc swap has to be a visible edit to a committed file.
+- `sdd cost` records correction turns and follow-up fixes via
+  `sdd cost annotate`, because tokens answer only the "cheaper" half of the
+  kill criterion.
+
+**Open, and it bites at the gate:**
+- On a 4 bug / 3 mid / 3 feature mix, a matched split leaves **one** feature
+  ticket in the `sdd` arm. The kill criterion turns on feature-class tickets,
+  so as mixed the gate rests on a single data point. Either reallocate
+  (6 feature / 4 bug, drop mid) or state plainly that the gate does not turn
+  on the feature class.
 
 ---
 

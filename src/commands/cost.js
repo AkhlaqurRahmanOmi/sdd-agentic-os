@@ -1,6 +1,7 @@
 import { SCHEMA, append, assertValidId, readAll, readRecords } from '../cost/store.js';
 import { TICKET_CLASSES, runWrapped } from '../cost/run.js';
 import { aggregate, formatReport } from '../cost/report.js';
+import { assign, formatPlan, readAssignment, writeAssignment } from '../cost/assignment.js';
 
 const USAGE = `sdd cost — record what an agent run costs
 
@@ -15,12 +16,18 @@ const USAGE = `sdd cost — record what an agent run costs
       agent, and whether the change needed a follow-up fix. Token cost alone
       does not answer "cheaper or better".
 
+  sdd cost plan --tickets <id:class,...> [--seed <s>]
+      Fix the matched split before any ticket runs. Writes
+      .sdd/cost/assignment.json; run then refuses a ticket in the wrong arm.
+      Print the current split by passing no --tickets.
+
   sdd cost report [--id <ticket>]
       Aggregate recorded runs by ticket class and phase.
 
 Options:
   --phase <name>   Defaults to "baseline".
   --no-keep-stream Do not save the raw stream alongside the record.
+  --force          Run a ticket in an arm it was not assigned to.
 `;
 
 export function parseArgs(argv) {
@@ -86,6 +93,7 @@ export async function costCommand(
       stdout,
       stderr,
       keepStream: flags['keep-stream'] !== false,
+      force: flags.force === true,
     });
     return typeof exitCode === 'number' ? exitCode : 1;
   }
@@ -110,6 +118,37 @@ export async function costCommand(
       `[sdd cost] annotated ${id}/${phase}: ${corrections} correction turn(s), ` +
         `follow-up fix ${record.followup_fix ? 'yes' : 'no'} -> ${file}\n`,
     );
+    return 0;
+  }
+
+  if (sub === 'plan') {
+    if (typeof flags.tickets !== 'string') {
+      const existing = await readAssignment(root);
+      if (!existing) throw new Error('no split planned yet — pass --tickets <id:class,...>');
+      stdout.write(formatPlan(existing));
+      return 0;
+    }
+    const tickets = flags.tickets
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .map((entry) => {
+        const [id, cls] = entry.split(':');
+        if (!id || !cls) throw new Error(`malformed ticket "${entry}": expected id:class`);
+        return { id: assertValidId(id), class: cls };
+      });
+    if (!tickets.length) throw new Error('--tickets listed no tickets');
+
+    if ((await readAssignment(root)) && flags.force !== true) {
+      throw new Error(
+        'a split is already planned. Re-planning after runs have started ' +
+          'lets results choose the arms — pass --force if you are certain.',
+      );
+    }
+    const plan = assign(tickets, typeof flags.seed === 'string' ? flags.seed : 'sdd');
+    const file = await writeAssignment(plan, root);
+    stdout.write(formatPlan(plan));
+    stderr.write(`\n[sdd cost] split written to ${file} — commit it.\n`);
     return 0;
   }
 

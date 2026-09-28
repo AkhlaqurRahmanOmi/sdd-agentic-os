@@ -8,8 +8,8 @@ Week 1 begins Mon 2026-09-28. Due dates are the Sunday ending each phase.
 ## Phase 0 — Baseline
 **Due:** 2026-10-04
 
-Build `sdd cost` and measure 10 real RevinrIT tickets with no SDD:
-4 one-file bugs, 3 mid-size, 3 multi-service features.
+Build `sdd cost` and measure 10 real RevinrIT tickets:
+**6 multi-service features, 4 one-file bugs.** The mid-size class is dropped.
 
 Per-phase records in `.sdd/cost/<id>.jsonl`: input, cached-read, cache-write,
 output, thinking tokens, model, wall time, files read, turn count.
@@ -28,12 +28,19 @@ traceability index defers to Phase 4 or is dropped.
   `sdd cost annotate`, because tokens answer only the "cheaper" half of the
   kill criterion.
 
-**Open, and it bites at the gate:**
-- On a 4 bug / 3 mid / 3 feature mix, a matched split leaves **one** feature
-  ticket in the `sdd` arm. The kill criterion turns on feature-class tickets,
-  so as mixed the gate rests on a single data point. Either reallocate
-  (6 feature / 4 bug, drop mid) or state plainly that the gate does not turn
-  on the feature class.
+- Ticket mix is **6 feature / 4 bug**, replacing the original 4 bug / 3 mid /
+  3 feature. That mix split the feature class 2/1, leaving the `sdd` arm with
+  one feature ticket — and the kill criterion turns entirely on feature-class
+  tickets, so the gate would have rested on a single data point. 6/4 splits
+  3/3 and 2/2, which `sdd cost plan` confirms by reporting no thin arms.
+
+  The mid class is dropped rather than shrunk. Three classes across ten
+  tickets cannot give any class enough per arm, and mid is the class no gate
+  or kill criterion refers to.
+
+  Two features per arm is still thin. It is enough to see a large effect and
+  not enough to see a small one, so a delta under roughly 25% should be read
+  as "no signal", not as a result.
 
 ---
 

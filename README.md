@@ -172,10 +172,25 @@ last run upward is a log, not a budget.
 ```yaml
 # .sdd/config.yaml
 agent:
-  driver: claude-code     # or: generic
-  bin: claude
-  args: ''                # generic only, e.g. 'exec --model {model} {prompt}'
+  driver: auto      # auto | claude-code | codex | generic
+  bin: ''           # empty = the driver's own default binary
+  args: ''          # generic only, e.g. 'exec --model {model} {prompt}'
 ```
+
+**`auto` detects the harness running `sdd`.** An agent CLI that shells out to
+`sdd` sets its own environment variables in the child process, so the harness
+identifies itself without being asked — `CLAUDECODE` / `CLAUDE_CODE_ENTRYPOINT`
+for Claude Code, `CODEX_SANDBOX` for Codex. Those markers were read out of the
+tools themselves, not assumed.
+
+Resolution is `--driver` → `SDD_AGENT_DRIVER` → `agent.driver` → detection →
+`claude-code`. **Configuration outranks detection**, because detection only
+says which harness happens to be running `sdd`; a repository that has decided
+which agent it targets has said something stronger.
+
+Nested harnesses leave both sets of markers behind and there is no way to tell
+which is the parent, so that is reported as ambiguous and falls through rather
+than being resolved by coin flip.
 
 | Driver | Token usage | Schema-constrained output | Tool allowlist | Verified |
 |---|---|---|---|---|

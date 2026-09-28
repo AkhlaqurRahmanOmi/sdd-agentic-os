@@ -159,6 +159,8 @@ marketplace, keep the repo and a deploy script, iterate weekly.
 - `sdd doctor` probes any driver against its real CLI and reports which
   declared capabilities actually work, which generalises per-harness
   verification instead of needing each CLI present to write the driver.
+- The driver is detected from the harness's own environment markers by
+  default (`agent.driver: auto`); configuration still outranks detection.
 
 **Still unresolved:**
 - The `codex` driver is written from verified flags and event names but an

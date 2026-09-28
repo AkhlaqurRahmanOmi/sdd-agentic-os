@@ -8,6 +8,7 @@
 //
 // It costs one small model call. That is the price of knowing.
 
+import { describeDetection, detectDriver } from '../agent/drivers/detect.js';
 import { resolveBin, resolveDriver } from '../agent/drivers/index.js';
 import { invokeAgent } from '../agent/invoke.js';
 import { loadConfig } from '../spec/config.js';
@@ -31,7 +32,20 @@ export async function doctorCommand(
   const config = await loadConfig(root);
   const driver = resolveDriver({ name: typeof flags.driver === 'string' ? flags.driver : null, config });
 
-  const lines = [`driver: ${driver.name}`];
+  const detected = detectDriver();
+  const configured = config.agent?.driver;
+  const lines = [
+    `detected: ${describeDetection(detected)}`,
+    `configured: ${!configured || configured === 'auto' ? 'auto' : configured}`,
+    `driver: ${driver.name}`,
+  ];
+  if (detected?.driver && detected.driver !== driver.name) {
+    lines.push(
+      '',
+      `Note: ${detected.driver} is running sdd, but ${driver.name} is what will be`,
+      'spawned. That is fine if deliberate — configuration outranks detection.',
+    );
+  }
   let bin;
   try {
     bin = resolveBin({ driver, config });

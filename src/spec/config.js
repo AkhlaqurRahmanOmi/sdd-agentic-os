@@ -12,9 +12,13 @@ export const DEFAULT_CONFIG = {
   // Which CLI runs the agent, and how to read what it prints.
   // "generic" works with any CLI that takes a prompt and prints text, but
   // reports no token usage — those runs are recorded as unmeasured.
+  // Leave bin empty to use the driver's own default binary.
   agent: {
-    driver: 'claude-code',
-    bin: 'claude',
+    // "auto" detects the harness running sdd from its environment markers.
+    // Naming a driver here overrides that, because a repository that has
+    // decided which agent it targets has said more than detection can.
+    driver: 'auto',
+    bin: '',
     args: '',
   },
   triage: {

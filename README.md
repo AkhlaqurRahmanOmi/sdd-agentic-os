@@ -3,7 +3,11 @@
 Spec-driven development harness. See [docs/milestones.md](docs/milestones.md)
 for the phase plan.
 
-Commands: `sdd init`, `sdd validate`, `sdd cost`.
+Commands: `sdd init`, `sdd triage`, `sdd propose`, `sdd tasks`,
+`sdd validate`, `sdd cost`.
+
+There is no design phase, no archive and no subagents, deliberately. They go in
+when a real ticket makes their absence painful, not before.
 
 ## Install
 
@@ -18,6 +22,40 @@ npm test
 
 Creates `.sdd/config.yaml` and `.sdd/constitution.md`. Neither is overwritten
 if it already exists.
+
+## The change pipeline
+
+```sh
+sdd triage --ticket ticket.md --id AUTH-9   # cheap model: tiny|small|feature|arch
+sdd propose --id AUTH-9                     # EARS requirements  <- human gate
+sdd tasks   --id AUTH-9                     # self-contained task cards
+sdd validate --change AUTH-9
+```
+
+**triage** runs on the cheap model and is the only token rule in the plan with
+benchmark support behind it. `tiny` and `small` exit there with acceptance
+criteria and never touch the rest of the system — no change directory is
+created. The prompt tells the model that classifying down is the expensive
+mistake, because a misclassified feature skips everything silently.
+
+**propose** writes `requirements.md` in EARS form and reports open questions.
+This is the one human gate. It refuses to overwrite requirements that already
+exist, since a re-propose discards whatever a human reviewed.
+
+**tasks** writes one card per task. Each card inlines its requirement text
+verbatim, so the agent working it loads the card and nothing else — never the
+whole spec. It refuses to decompose while open questions are unanswered:
+a guess made here is copied into every card, where it costs far more to find
+than in one reviewed file. `--force` overrides.
+
+Cards name target symbols rather than line numbers. Line anchors go stale on
+the next commit above them; that is the Phase 2 index decision made early.
+
+Each phase routes to its own model via `.sdd/config.yaml` — cheap for triage
+and decomposition, not for requirements on brownfield code.
+
+`state.md` is the only file rewritten mid-session. `requirements.md`, the task
+cards and `constitution.md` stay byte-identical so their cached prefix holds.
 
 ## `sdd validate`
 

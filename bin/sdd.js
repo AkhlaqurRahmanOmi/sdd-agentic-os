@@ -3,6 +3,7 @@ import { budgetCommand } from '../src/commands/budget.js';
 import { costCommand } from '../src/commands/cost.js';
 import { hooksCommand } from '../src/commands/hooks.js';
 import { indexCommand } from '../src/commands/index-cmd.js';
+import { installCommand } from '../src/commands/install.js';
 import { initCommand } from '../src/commands/init.js';
 import { proposeCommand } from '../src/commands/propose.js';
 import { tasksCommand } from '../src/commands/tasks.js';
@@ -28,6 +29,8 @@ const USAGE = `sdd — spec-driven development harness
   sdd budget set|check            Token ceiling per change. check exits 1
                                   when a change costs more than its ceiling.
   sdd hooks install               Install the pre-commit hook.
+  sdd install [--targets a,b]     Generate AGENTS.md and agent skills.
+                                  Targets: generic, claude, codex.
 
   sdd cost                        Record and report what agent runs cost.
 `;
@@ -38,6 +41,7 @@ const COMMANDS = {
   hooks: hooksCommand,
   index: indexCommand,
   init: initCommand,
+  install: installCommand,
   propose: proposeCommand,
   tasks: tasksCommand,
   triage: triageCommand,

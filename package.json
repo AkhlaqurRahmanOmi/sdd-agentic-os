@@ -1,12 +1,20 @@
 {
-  "name": "sdd",
-  "version": "0.0.0",
-  "description": "Spec-driven development harness. Phase 0: cost measurement.",
+  "name": "sdd-agentic-os",
+  "version": "0.1.0",
+  "description": "Spec-driven development harness: triage, requirements, task cards, and CI enforcement for coding agents.",
   "type": "module",
+  "license": "MIT",
   "bin": { "sdd": "bin/sdd.js" },
-  "files": ["bin", "src"],
+  "files": ["bin", "src", "README.md"],
   "engines": { "node": ">=22" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AkhlaqurRahmanOmi/sdd-agentic-os.git"
+  },
+  "keywords": ["agents", "spec-driven-development", "claude-code", "codex", "agents-md"],
   "scripts": {
-    "test": "node --test \"test/**/*.test.js\""
+    "test": "node --test \"test/**/*.test.js\"",
+    "verify:discovery": "node scripts/verify-discovery.mjs",
+    "prepublishOnly": "npm test"
   }
 }

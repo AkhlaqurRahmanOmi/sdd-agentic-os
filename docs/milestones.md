@@ -127,13 +127,26 @@ Everything else rides the generic floor with no adapter code.
 **Kill:** week 7 and nobody but you uses it → personal tool. Drop npm and the
 marketplace, keep the repo and a deploy script, iterate weekly.
 
-**Unresolved:**
-- That kill criterion fires in the same week this milestone ships, so it has
-  no data to fire on. A crude distribution attempt (clone + install script, one
-  other person, no versioning) belongs around week 4 if the criterion is to mean
-  anything.
-- "Scripts via shell, no MCP server" assumes every target harness can execute
-  them. Verify against Codex sandboxing before building the plugin.
+**Verified:**
+- Claude Code discovers all four generated skills. Asserted by running the CLI
+  headless and reading the skills it reports, which needs no credentials
+  because discovery is in the init event, before any API call.
+- Upgrade safety: an edited or pre-existing file is never overwritten; the new
+  version lands at `<path>.incoming`.
+
+**Found, and it contradicts the plan:**
+- Claude Code does **not** read `.agents/skills/`. The native adapter is
+  required, not a convenience, so "everything else rides the generic floor with
+  no adapter code" does not hold. Every harness that does not read AGENTS.md
+  needs its own directory.
+
+**Still unresolved:**
+- Codex discovery is unverified. Files are generated for it; nothing proves
+  they are read. The nightly says so rather than claiming a pass.
+- The kill criterion fires in the same week this milestone ships, so it still
+  has no data to fire on.
+- The npm package name is `sdd-agentic-os` and unpublished. Nothing has been
+  released.
 
 ---
 

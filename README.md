@@ -3,7 +3,7 @@
 Spec-driven development harness. See [docs/milestones.md](docs/milestones.md)
 for the phase plan.
 
-Commands: `sdd init`, `sdd triage`, `sdd propose`, `sdd tasks`,
+Commands: `sdd init`, `sdd install`, `sdd triage`, `sdd propose`, `sdd tasks`,
 `sdd validate`, `sdd index`, `sdd budget`, `sdd hooks`, `sdd cost`.
 
 There is no design phase, no archive and no subagents, deliberately. They go in
@@ -116,6 +116,49 @@ A ceiling comes from a recorded run, so `budget check` does nothing until
 tickets have actually been measured. `budget set` lowers a ceiling freely and
 refuses to raise one without `--raise` — a ceiling that quietly follows the
 last run upward is a log, not a budget.
+
+## Distribution
+
+```sh
+npx sdd-agentic-os install            # generic floor + Claude Code
+npx sdd-agentic-os install --targets generic,claude,codex
+```
+
+Generates `AGENTS.md` (pointers only, under the 150-line budget, enforced by a
+test) and one skill per command under `.agents/skills/`, plus a directory per
+named harness.
+
+### The adapter is not optional for Claude Code
+
+`.agents/skills/` is the generic floor, but **Claude Code does not read it.**
+Running the CLI and reading the skills it reports shows `.claude/skills/`
+discovered and `.agents/skills/` absent. So a harness-specific directory is
+required, not a convenience — the "everything rides the generic floor with no
+adapter code" assumption does not survive contact.
+
+`npm run verify:discovery` asserts this: it installs into a temp project, runs
+Claude Code headless, and checks the skills it reports. Claude Code emits its
+discovered skills in the init event **before any API call**, so this needs no
+credentials and the nightly workflow needs no secrets.
+
+Codex discovery is **not** verified. `AGENTS.md` and `.codex/skills/` are
+generated for it, but nothing here proves either is read, and the script says
+so rather than reporting a pass it cannot support.
+
+### Upgrades do not clobber edits
+
+Every generated file's SHA-256 is recorded in `.sdd/generated.json`.
+On re-install:
+
+| State | What happens |
+|---|---|
+| Absent | written |
+| Unchanged since sdd wrote it | updated in place |
+| Edited since sdd wrote it | left alone; new version at `<path>.incoming` |
+| Never written by sdd | left alone; new version at `<path>.incoming` |
+
+The last row is the one that matters: a repo with an `AGENTS.md` predating sdd
+keeps it.
 
 ## `sdd cost`
 

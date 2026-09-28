@@ -3,8 +3,7 @@
 Spec-driven development harness. See [docs/milestones.md](docs/milestones.md)
 for the phase plan.
 
-Phase 0 only: `sdd cost`. Nothing else is built yet, deliberately — the rest of
-the system does not start until there is a baseline to compare it against.
+Commands: `sdd init`, `sdd validate`, `sdd cost`.
 
 ## Install
 
@@ -14,6 +13,31 @@ No dependencies, no build step. Node 22+.
 npm link          # or: node bin/sdd.js ...
 npm test
 ```
+
+## `sdd init`
+
+Creates `.sdd/config.yaml` and `.sdd/constitution.md`. Neither is overwritten
+if it already exists.
+
+## `sdd validate`
+
+```sh
+sdd validate [--change <id>]
+```
+
+Exits 1 if any change under `.sdd/changes/` fails. Checks that every
+requirement has evidence, every task maps to a requirement that exists, every
+requirement is covered by a task, the task index and the task cards agree, and
+the constitution is within budget.
+
+Warnings do not fail: a requirement not in EARS form, an unanswered open
+question, a card with no target files.
+
+**What this does not check.** Evidence is written by the same agent that wrote
+the requirement. A pass means the paperwork is internally consistent, not that
+the code is correct. Evidence entries record the command and its exit status
+so Phase 2 can re-execute them; until that lands, `validate` is an
+attestation check and the output says so.
 
 ## `sdd cost`
 

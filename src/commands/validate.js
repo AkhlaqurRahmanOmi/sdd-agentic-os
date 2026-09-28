@@ -1,6 +1,7 @@
 import { readdir } from 'node:fs/promises';
 import { changesDir } from '../spec/paths.js';
 import { formatProblems, validateChange, validateConstitution } from '../spec/validate.js';
+import { stagedChanges } from './hooks.js';
 
 export async function listChanges(root = process.cwd()) {
   try {
@@ -19,9 +20,19 @@ export async function validateCommand(
   const changeFlag = argv.indexOf('--change');
   const only = changeFlag === -1 ? null : argv[changeFlag + 1];
 
-  const ids = only ? [only] : await listChanges(root);
+  // --staged is what the pre-commit hook runs: only the changes this commit
+  // touches, so work in flight elsewhere does not block the commit.
+  let ids;
+  if (only) ids = [only];
+  else if (argv.includes('--staged')) ids = await stagedChanges(root);
+  else ids = await listChanges(root);
+
   if (!ids.length) {
-    stdout.write('validate: no changes under .sdd/changes — nothing to check\n');
+    stdout.write(
+      argv.includes('--staged')
+        ? 'validate: no spec files staged — nothing to check\n'
+        : 'validate: no changes under .sdd/changes — nothing to check\n',
+    );
     return 0;
   }
 

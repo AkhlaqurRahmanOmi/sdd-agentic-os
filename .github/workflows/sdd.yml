@@ -1,0 +1,29 @@
+name: sdd
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Unit tests
+        run: npm test
+
+      # Unlike the pre-commit hook, CI validates every change, not just the
+      # ones a commit touched. A change abandoned half-specified fails here.
+      - name: Spec validation
+        run: node bin/sdd.js validate
+
+      - name: Traceability index
+        run: node bin/sdd.js index check
+
+      - name: Budget ratchet
+        run: node bin/sdd.js budget check

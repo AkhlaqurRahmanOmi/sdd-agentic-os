@@ -4,7 +4,7 @@ Spec-driven development harness. See [docs/milestones.md](docs/milestones.md)
 for the phase plan.
 
 Commands: `sdd init`, `sdd triage`, `sdd propose`, `sdd tasks`,
-`sdd validate`, `sdd cost`.
+`sdd validate`, `sdd index`, `sdd budget`, `sdd hooks`, `sdd cost`.
 
 There is no design phase, no archive and no subagents, deliberately. They go in
 when a real ticket makes their absence painful, not before.
@@ -76,6 +76,46 @@ the requirement. A pass means the paperwork is internally consistent, not that
 the code is correct. Evidence entries record the command and its exit status
 so Phase 2 can re-execute them; until that lands, `validate` is an
 attestation check and the output says so.
+
+## Enforcement
+
+```sh
+sdd hooks install     # pre-commit: validates only the changes this commit touches
+sdd index build       # REQ -> tasks -> code anchors, committed as .sdd/index.json
+sdd index check       # exits 1 when an anchor no longer resolves
+sdd budget set --change <id>   # record this change's token ceiling
+sdd budget check      # exits 1 when a change costs more than its ceiling
+```
+
+`.github/workflows/sdd.yml` runs all of these. The hook and CI differ
+deliberately: the hook validates only what the commit touches, so work in
+flight on another change does not block it, and CI validates everything, so a
+change abandoned half-specified still fails.
+
+### The index, and what it is honest about
+
+Anchors are **file + symbol**, never line ranges. A line range breaks on any
+edit above it, including a reformat, and a check that cries wolf gets
+`--no-verify`'d within a week.
+
+Symbol presence is a word-boundary search, not a parse. So: a deleted or
+renamed symbol fails, code moving within a file does not, and a symbol
+surviving only inside a comment or a string passes when it should not. The
+alternative is a parser per language. A check that is occasionally too lenient
+beats one that is occasionally wrong and gets switched off.
+
+Evidence is deliberately **not** in the index. It changes every time a task
+completes, so including it made "index is out of date" fire on nearly every
+commit — the same cry-wolf failure by a different route. Evidence lives in
+`evidence.md` and `sdd validate` checks it. This was found by running the
+Phase 2 gate, not by reading the code.
+
+### The ratchet
+
+A ceiling comes from a recorded run, so `budget check` does nothing until
+tickets have actually been measured. `budget set` lowers a ceiling freely and
+refuses to raise one without `--raise` — a ceiling that quietly follows the
+last run upward is a log, not a budget.
 
 ## `sdd cost`
 

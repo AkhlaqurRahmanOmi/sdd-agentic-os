@@ -91,13 +91,25 @@ by reading the code.
 **Kill:** if the drift check can't be made reliable, ship without the index.
 A stale index is worse than none.
 
-**Unresolved:**
-- `validate` as specified checks that the agent's `evidence.md` mentions the
-  agent's own REQ IDs. That is self-attestation. It fails on a forgotten line,
-  never on wrong code. Decide whether evidence entries must be a test node ID
-  plus proof of execution.
-- Line-range anchors drift on any edit above them, including formatting.
-  Decide symbol-name anchoring before writing the index, not after.
+**Gate verified** by breaking it, not by reading the code:
+- requirement with no evidence -> pre-commit hook blocks a real commit
+- renamed symbol -> `index check` exits 1; deleted file -> exits 1
+- function moved 100 lines down -> exits 0 (control: movement is not drift)
+- run over ceiling -> `budget check` exits 1
+
+**Decided:**
+- Anchors are file + symbol, never line ranges.
+- Evidence is not in `index.json`. It changes on every task completion, so
+  including it made "index out of date" fire on nearly every commit. Found by
+  running the gate.
+
+**Still unresolved:**
+- `validate` checks that the agent's `evidence.md` mentions the agent's own
+  REQ IDs. That is self-attestation: it fails on a forgotten line, never on
+  wrong code. The format records the command and exit status, so executing
+  them is additive — but it is not built.
+- Symbol presence is a word-boundary search, not a parse. A symbol surviving
+  only in a comment or a string passes when it should not.
 
 ---
 

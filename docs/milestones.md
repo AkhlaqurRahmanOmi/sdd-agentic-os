@@ -1,5 +1,8 @@
 # Milestones
 
+Decisions made along the way are recorded in [docs/adr/](adr/); this file
+tracks the phases and their gates.
+
 Paste into GitHub → Issues → Milestones → New milestone.
 Week 1 begins Mon 2026-09-28. Due dates are the Sunday ending each phase.
 
@@ -19,7 +22,7 @@ output, thinking tokens, model, wall time, files read, turn count.
 **Conditional:** if file-reading is not in the top two token sinks, the
 traceability index defers to Phase 4 or is dropped.
 
-**Decided:**
+**Decided** (→ [ADR 001](adr/001-baseline-measurement.md)):
 - Comparison design is a **matched split**: each ticket runs in exactly one
   arm, arms fixed before any ticket runs via `sdd cost plan`, which writes
   `.sdd/cost/assignment.json`. `sdd cost run` refuses a ticket in the wrong
@@ -97,7 +100,7 @@ A stale index is worse than none.
 - function moved 100 lines down -> exits 0 (control: movement is not drift)
 - run over ceiling -> `budget check` exits 1
 
-**Decided:**
+**Decided** (→ [ADR 002](adr/002-traceability-anchors.md)):
 - Anchors are file + symbol, never line ranges.
 - Evidence is not in `index.json`. It changes on every task completion, so
   including it made "index out of date" fire on nearly every commit. Found by
@@ -153,6 +156,7 @@ marketplace, keep the repo and a deploy script, iterate weekly.
 ## Token rules, in payoff order
 1. Triage small work out entirely — the only rule with benchmark support
 2. Never mutate always-loaded files mid-session; volatile state in `state.md`
-3. Task cards with line anchors, never whole-spec loading
+3. Task cards with symbol anchors, never whole-spec loading (ADR 002:
+   line anchors were rejected — they break on any edit above them)
 4. No MCP server; scripts via shell
 5. Cheap model for search/format/decompose, not for requirements on brownfield code

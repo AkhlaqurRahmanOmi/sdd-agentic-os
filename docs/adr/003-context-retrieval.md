@@ -3,9 +3,9 @@
 **Status:** Proposed. No implementation.
 **Date:** 2026-09-28
 
-> Numbering note: this is filed as 003 as requested. ADRs 001 and 002 do not
-> exist. Either backfill them for the matched-split and anchor-format decisions
-> already made in `docs/milestones.md`, or renumber this to 001.
+> Unlike ADRs 001 and 002, which record decisions already implemented, this one
+> proposes something unbuilt. Nothing here should be built before Phase 0 says
+> whether file-reading is actually a top-two token sink.
 
 ## Context
 
@@ -197,3 +197,9 @@ justify these numbers.
 
 Value of *N*. It should come from measured pack sizes against real cards, not
 from a round number chosen now.
+
+## See also
+
+- ADR 001 — baseline measurement, whose `files_read_paths` records are the
+  cheap way to validate the weights above
+- ADR 002 — traceability anchors, whose graph supplies the linkage distance

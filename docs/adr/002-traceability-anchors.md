@@ -108,6 +108,21 @@ By breaking it, not by reading the code:
   rebuilding it. The staleness check would then be firing constantly, which is
   the signal to move the index out of version control and rebuild it in CI.
 
+## Addendum — evidence execution
+
+This ADR left evidence as self-attestation: `validate` checked that the text
+claimed `exit: 0`, never that it was true. `sdd validate --execute` now runs
+the recorded commands and fails on a claim that disagrees with the observation.
+
+It is opt-in because executing evidence means running arbitrary shell from a
+file inside the repository. CI already runs repository-supplied code, so it
+belongs there; a pre-commit hook would run it on every checkout of every
+branch, so `--execute --staged` is refused.
+
+That the evidence format already carried the command and exit status is why
+this was additive rather than a migration — which was the reason for recording
+them in the first place.
+
 ## See also
 
 - ADR 001 — baseline measurement

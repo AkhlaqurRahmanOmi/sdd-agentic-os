@@ -20,9 +20,11 @@ const USAGE = `sdd — spec-driven development harness
                                   rest of the system.
   sdd propose --id <change>       Write EARS requirements. One human gate here.
   sdd tasks --id <change>         Decompose into self-contained task cards.
-  sdd validate [--change <id>|--staged]
+  sdd validate [--change <id>|--staged] [--execute]
                                   Every requirement has evidence, every task
                                   maps to a requirement. Exits 1 otherwise.
+                                  --execute runs the recorded evidence
+                                  commands instead of trusting them.
   sdd index build|check           Traceability graph: REQ -> tasks -> code.
                                   check exits 1 when an anchor no longer
                                   resolves or the index is out of date.

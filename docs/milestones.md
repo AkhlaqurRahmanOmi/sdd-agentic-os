@@ -106,11 +106,13 @@ A stale index is worse than none.
   including it made "index out of date" fire on nearly every commit. Found by
   running the gate.
 
+**Resolved:**
+- `sdd validate --execute` runs the recorded evidence commands and fails when
+  a claimed exit status disagrees with the observed one. Opt-in, and refused
+  together with `--staged`: the commands come from a file in the repository,
+  so CI is the right place to run them and a pre-commit hook is not.
+
 **Still unresolved:**
-- `validate` checks that the agent's `evidence.md` mentions the agent's own
-  REQ IDs. That is self-attestation: it fails on a forgotten line, never on
-  wrong code. The format records the command and exit status, so executing
-  them is additive — but it is not built.
 - Symbol presence is a word-boundary search, not a parse. A symbol surviving
   only in a comment or a string passes when it should not.
 

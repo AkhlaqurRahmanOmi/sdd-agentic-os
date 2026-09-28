@@ -71,11 +71,31 @@ the constitution is within budget.
 Warnings do not fail: a requirement not in EARS form, an unanswered open
 question, a card with no target files.
 
-**What this does not check.** Evidence is written by the same agent that wrote
-the requirement. A pass means the paperwork is internally consistent, not that
-the code is correct. Evidence entries record the command and its exit status
-so Phase 2 can re-execute them; until that lands, `validate` is an
-attestation check and the output says so.
+### `--execute`
+
+```sh
+sdd validate --execute
+```
+
+Runs the commands `evidence.md` records instead of trusting the exit status it
+claims. A claim that disagrees with reality is `evidence-mismatch`, which is
+the finding the flag exists for: without it, an agent that writes `exit: 0`
+beside a failing test passes.
+
+Commands shared by several requirements run once.
+
+**It is opt-in, and deliberately not what the hook runs.** These commands come
+from a markdown file inside the repository, so executing them is arbitrary
+shell execution from repository content. CI already runs repository-supplied
+code, so `--execute` belongs there; a pre-commit hook does not, so
+`--execute --staged` is refused rather than quietly allowed.
+
+Execution is skipped when the shape checks already failed — running a suite to
+discover that a REQ id is malformed wastes the slowest part of the check.
+
+**Without `--execute`,** evidence is written by the same agent that wrote the
+requirement, so a pass means the paperwork is internally consistent, not that
+the code is correct. The output says so, and says how to upgrade.
 
 ## Enforcement
 

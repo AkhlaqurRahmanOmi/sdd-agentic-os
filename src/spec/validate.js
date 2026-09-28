@@ -9,6 +9,7 @@
 // the command and exit status so that lands without a format change.
 
 import { readFile, readdir } from 'node:fs/promises';
+import { executeEvidence } from './execute.js';
 import {
   REQ_ID,
   TASK_ID,
@@ -40,7 +41,7 @@ async function readOptional(file) {
 
 const problem = (severity, code, message, where) => ({ severity, code, message, where });
 
-export async function validateChange(id, root = process.cwd()) {
+export async function validateChange(id, root = process.cwd(), { execute = false } = {}) {
   const problems = [];
   const fail = (...a) => problems.push(problem('error', ...a));
   const warn = (...a) => problems.push(problem('warn', ...a));
@@ -162,7 +163,24 @@ export async function validateChange(id, root = process.cwd()) {
     }
   }
 
-  return { id, problems, ok: !problems.some((p) => p.severity === 'error') };
+  // Opt-in: actually run what the evidence claims. Only worth doing once the
+  // shape checks above pass — running a suite to discover a REQ id is
+  // malformed wastes the slowest part of the check.
+  let executed = null;
+  if (execute && !problems.some((p) => p.severity === 'error')) {
+    const onlyDeclared = new Map(
+      [...evidence].filter(([req]) => reqIds.has(req)),
+    );
+    executed = await executeEvidence(onlyDeclared, { cwd: root });
+    problems.push(...executed.problems);
+  }
+
+  return {
+    id,
+    problems,
+    executed,
+    ok: !problems.some((p) => p.severity === 'error'),
+  };
 }
 
 export async function validateConstitution(root = process.cwd()) {
@@ -190,9 +208,16 @@ export function formatProblems(results, constitutionProblems = []) {
     ...constitutionProblems.map((p) => ({ ...p, change: null })),
     ...results.flatMap((r) => r.problems.map((p) => ({ ...p, change: r.id }))),
   ];
+  const ran = results.reduce((n, r) => n + (r.executed?.ran ?? 0), 0);
+  const executedAny = results.some((r) => r.executed);
+
   if (!all.length) {
     const n = results.length;
-    return `validate: ok (${n} change${n === 1 ? '' : 's'})\n`;
+    return (
+      `validate: ok (${n} change${n === 1 ? '' : 's'}` +
+      (executedAny ? `, ${ran} evidence command${ran === 1 ? '' : 's'} executed` : '') +
+      ')\n'
+    );
   }
   for (const p of all) {
     const scope = p.change ? `${p.change}: ` : '';
@@ -203,11 +228,16 @@ export function formatProblems(results, constitutionProblems = []) {
   lines.push(`\n${errors} error(s), ${warns} warning(s)`);
   if (errors === 0) {
     lines.push('validate: ok (warnings do not fail)');
+  } else if (executedAny) {
+    lines.push(
+      `validate: failed (${ran} evidence command(s) executed)`,
+    );
   } else {
     lines.push(
       'validate: failed\n\nThis checks that the spec files are internally consistent. ' +
         'Evidence is\nself-reported by the agent that wrote the requirement — a pass means the\n' +
-        'paperwork holds together, not that the code is correct.',
+        'paperwork holds together, not that the code is correct.\n' +
+        'Pass --execute to run the recorded commands instead of trusting them.',
     );
   }
   return `${lines.join('\n')}\n`;

@@ -17,6 +17,16 @@ export async function validateCommand(
   argv,
   { root = process.cwd(), stdout = process.stdout } = {},
 ) {
+  // Executing evidence runs shell commands out of a file in the repository.
+  // It stays opt-in, and the hook (--staged) never gets it implicitly.
+  const execute = argv.includes('--execute');
+  if (execute && argv.includes('--staged')) {
+    throw new Error(
+      '--execute and --staged together would run repository-supplied commands ' +
+        'on every commit. Run --execute in CI instead.',
+    );
+  }
+
   const changeFlag = argv.indexOf('--change');
   const only = changeFlag === -1 ? null : argv[changeFlag + 1];
 
@@ -37,7 +47,7 @@ export async function validateCommand(
   }
 
   const results = [];
-  for (const id of ids) results.push(await validateChange(id, root));
+  for (const id of ids) results.push(await validateChange(id, root, { execute }));
   const constitutionProblems = await validateConstitution(root);
 
   stdout.write(formatProblems(results, constitutionProblems));

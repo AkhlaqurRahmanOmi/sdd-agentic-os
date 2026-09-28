@@ -19,8 +19,11 @@ jobs:
 
       # Unlike the pre-commit hook, CI validates every change, not just the
       # ones a commit touched. A change abandoned half-specified fails here.
+      # --execute runs the commands evidence.md records, rather than trusting
+      # the exit status it claims. Safe here and not in the hook: CI already
+      # runs repository-supplied code, a pre-commit hook does not.
       - name: Spec validation
-        run: node bin/sdd.js validate
+        run: node bin/sdd.js validate --execute
 
       - name: Traceability index
         run: node bin/sdd.js index check

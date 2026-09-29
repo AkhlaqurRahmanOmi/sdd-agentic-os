@@ -156,3 +156,25 @@ test('the failure output says evidence is self-reported', async () => {
   });
   assert.match(formatProblems([result]), /self-reported/);
 });
+
+test('a prose section in requirements.md is not mistaken for a requirement', async () => {
+  const result = await broken(async (root, id) => {
+    const file = path.join(changeDir(id, root), 'requirements.md');
+    const text = await readFile(file, 'utf8');
+    await writeFile(
+      file,
+      `${text}\n## Decisions\n\nAnswered at the review gate.\n\n## Glossary\n\nA term.\n`,
+      'utf8',
+    );
+  });
+  assert.deepEqual(result.problems, [], 'prose headings must not become requirements');
+});
+
+test('a heading that starts REQ but is malformed is still reported', async () => {
+  const result = await broken(async (root, id) => {
+    const file = path.join(changeDir(id, root), 'requirements.md');
+    const text = await readFile(file, 'utf8');
+    await writeFile(file, text.replace('## REQ-AUTH-001', '## REQ-auth-1'), 'utf8');
+  });
+  assert.ok(result.problems.some((p) => p.code === 'bad-req-id'));
+});

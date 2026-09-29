@@ -34,6 +34,16 @@ export function parseRequirements(markdown) {
   const openQuestions = [];
 
   for (const section of sections(markdown)) {
+    // Anything not headed by a REQ id is prose — a Decisions section, notes,
+    // a glossary. Treating every heading as a requirement made real specs
+    // fail validation for containing paragraphs. A heading that *starts*
+    // REQ is still taken as an attempted requirement, so a malformed id is
+    // reported rather than silently skipped.
+    // An id attempt is a heading that starts REQ in any casing, or is a bare
+    // upper-case token like AUTH-1. Prose headings ("Decisions", "Resolved
+    // Questions") are neither, so they are skipped without hiding a typo'd id.
+    const looksLikeRequirement =
+      /^REQ/i.test(section.heading) || /^[A-Z0-9][A-Z0-9_-]*$/.test(section.heading);
     if (/^open questions$/i.test(section.heading)) {
       openQuestions.push(
         ...section.body
@@ -43,6 +53,8 @@ export function parseRequirements(markdown) {
       );
       continue;
     }
+    if (!looksLikeRequirement) continue;
+
     const text = section.body;
     const firstWord = text.split(/\s+/)[0]?.toLowerCase().replace(/[^a-z]/g, '') ?? '';
     requirements.push({

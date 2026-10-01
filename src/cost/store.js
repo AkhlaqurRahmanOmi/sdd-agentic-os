@@ -34,6 +34,42 @@ export async function append(record, root = process.cwd()) {
   return file;
 }
 
+export const STEPS = ['triage', 'propose', 'tasks', 'implement'];
+
+// Records one model call made by a pipeline phase.
+//
+// `phase` is the matched-split arm (baseline | sdd); `step` is where in the
+// pipeline the call happened. They were conflated before: the spec commands
+// printed usage to stderr and recorded nothing, so the sdd arm of the split
+// was unmeasurable — its total is triage + propose + tasks + implement, and
+// only the last was ever wrapped.
+export async function recordAgentRun(
+  { id, step, ticketClass = null, phase = 'sdd', usage, model, driver, measured = true },
+  root = process.cwd(),
+) {
+  if (!STEPS.includes(step)) throw new Error(`unknown step "${step}"`);
+  const record = {
+    schema: SCHEMA,
+    kind: 'run',
+    id,
+    class: ticketClass,
+    phase,
+    step,
+    started_at: new Date().toISOString(),
+    driver,
+    measured: measured && Boolean(usage),
+    model: usage?.model ?? model ?? null,
+    tokens: usage?.tokens ?? null,
+    cost_usd: usage?.costUsd ?? null,
+    wall_ms: usage?.wallMs ?? null,
+    turns: usage?.turns ?? null,
+    files_read: usage?.filesRead?.length ?? null,
+    ok: true,
+  };
+  await append(record, root);
+  return record;
+}
+
 export async function readRecords(id, root = process.cwd()) {
   let text;
   try {

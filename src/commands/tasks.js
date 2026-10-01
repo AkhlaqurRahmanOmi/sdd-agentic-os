@@ -3,6 +3,7 @@ import path from 'node:path';
 import { invokeAgentJson } from '../agent/invoke.js';
 import { TASKS_SCHEMA, tasksPrompt } from '../agent/prompts.js';
 import { loadConfig } from '../spec/config.js';
+import { recordAgentRun } from '../cost/store.js';
 import { REQ_ID, parseRequirements } from '../spec/parse.js';
 import { changeDir, evidencePath, requirementsPath, taskCardsDir, tasksIndexPath } from '../spec/paths.js';
 import { renderEvidenceSkeleton, renderState, renderTaskCard, renderTasksIndex } from '../spec/render.js';
@@ -51,7 +52,7 @@ export async function tasksCommand(
     );
   }
 
-  const { data } = await invokeAgentJson({
+  const { data, usage, measured, driver } = await invokeAgentJson({
     prompt: tasksPrompt(requirementsMd, typeof f.test === 'string' ? f.test : null),
     model: config.tasks.model,
     schema: TASKS_SCHEMA,
@@ -60,6 +61,16 @@ export async function tasksCommand(
     driver: typeof f.driver === 'string' ? f.driver : null,
     stderr,
   });
+
+  // Record the call before doing anything with its result: a phase that
+  // writes files but leaves no ledger entry is exactly the gap that made the
+  // sdd arm unmeasurable.
+  if (typeof f.id === 'string') {
+    await recordAgentRun(
+      { id: f.id, step: 'tasks', usage, measured, driver, phase: typeof f.phase === 'string' ? f.phase : 'sdd' },
+      root,
+    );
+  }
 
   const known = new Set(reqIds);
   for (const task of data.tasks) {

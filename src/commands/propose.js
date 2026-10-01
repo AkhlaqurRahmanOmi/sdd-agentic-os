@@ -3,6 +3,7 @@ import path from 'node:path';
 import { invokeAgent } from '../agent/invoke.js';
 import { proposePrompt } from '../agent/prompts.js';
 import { loadConfig } from '../spec/config.js';
+import { recordAgentRun } from '../cost/store.js';
 import { parseRequirements } from '../spec/parse.js';
 import { changeDir, constitutionPath, requirementsPath } from '../spec/paths.js';
 import { renderState } from '../spec/render.js';
@@ -32,7 +33,7 @@ export async function proposeCommand(
     );
   }
 
-  const { text } = await invokeAgent({
+  const { text, usage, measured, driver } = await invokeAgent({
     prompt: proposePrompt(ticket, area, await readIfPresent(constitutionPath(root))),
     model: config.propose.model,
     cwd: root,
@@ -40,6 +41,16 @@ export async function proposeCommand(
     driver: typeof f.driver === 'string' ? f.driver : null,
     stderr,
   });
+
+  // Record the call before doing anything with its result: a phase that
+  // writes files but leaves no ledger entry is exactly the gap that made the
+  // sdd arm unmeasurable.
+  if (typeof f.id === 'string') {
+    await recordAgentRun(
+      { id: f.id, step: 'propose', usage, measured, driver, phase: typeof f.phase === 'string' ? f.phase : 'sdd' },
+      root,
+    );
+  }
 
   await writeFile(file, `${text.trim()}\n`, 'utf8');
   await writeFile(path.join(changeDir(id, root), 'state.md'), renderState(id, 'proposed'), 'utf8');

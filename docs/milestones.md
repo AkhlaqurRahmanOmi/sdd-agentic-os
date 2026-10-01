@@ -22,6 +22,17 @@ output, thinking tokens, model, wall time, files read, turn count.
 **Conditional:** if file-reading is not in the top two token sinks, the
 traceability index defers to Phase 4 or is dropped.
 
+**Measured on a real ticket (2026-10-01), and it threatens the gate:**
+- The same ticket, model and prompt ran triage at 29,403 input tokens once and
+  140,960 the next time — roughly 5x. ADR 001 calls a delta under 25% "no
+  signal"; run-to-run variance on a single step is several times that. At
+  three tickets per arm the matched split cannot resolve anything smaller than
+  the noise. Either repeat each ticket and use per-ticket medians, or stop
+  treating the feature-class comparison as a gate.
+- `sdd tasks` cost $1.13 on 1,133,945 input tokens. The model was the cheap
+  one; the agent read the whole codebase anyway. Model routing does not
+  control cost here, tool access does.
+
 **Decided** (→ [ADR 001](adr/001-baseline-measurement.md)):
 - Comparison design is a **matched split**: each ticket runs in exactly one
   arm, arms fixed before any ticket runs via `sdd cost plan`, which writes

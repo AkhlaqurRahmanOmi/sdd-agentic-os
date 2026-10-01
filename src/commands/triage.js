@@ -3,6 +3,7 @@ import path from 'node:path';
 import { invokeAgentJson } from '../agent/invoke.js';
 import { TRIAGE_SCHEMA, triagePrompt } from '../agent/prompts.js';
 import { loadConfig } from '../spec/config.js';
+import { recordAgentRun } from '../cost/store.js';
 import { changeDir } from '../spec/paths.js';
 import { renderState } from '../spec/render.js';
 import { recordTriage } from '../spec/triage-log.js';
@@ -28,7 +29,7 @@ export async function triageCommand(
   const ticket = await readTicket(f, root);
   const config = await loadConfig(root);
 
-  const { data } = await invokeAgentJson({
+  const { data, usage, measured, driver } = await invokeAgentJson({
     prompt: triagePrompt(ticket, config),
     model: config.triage.model,
     schema: TRIAGE_SCHEMA,
@@ -37,6 +38,16 @@ export async function triageCommand(
     driver: typeof f.driver === 'string' ? f.driver : null,
     stderr,
   });
+
+  // Record the call before doing anything with its result: a phase that
+  // writes files but leaves no ledger entry is exactly the gap that made the
+  // sdd arm unmeasurable.
+  if (typeof f.id === 'string') {
+    await recordAgentRun(
+      { id: f.id, step: 'triage', usage, measured, driver, phase: typeof f.phase === 'string' ? f.phase : 'sdd' },
+      root,
+    );
+  }
 
   // Recorded for every class, including the ones that write nothing else.
   // Without this a tiny/small decision leaves no trace and cannot be audited.

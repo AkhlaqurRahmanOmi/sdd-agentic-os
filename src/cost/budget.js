@@ -31,12 +31,34 @@ export async function writeBudgets(budgets, root = process.cwd()) {
 // The most recent successful run is what a ceiling is measured against; an
 // errored run has no meaningful total.
 export async function latestRun(id, root = process.cwd()) {
-  // An unmeasured run has no token total, so it can neither set nor breach a
-  // ceiling. Treating it as zero would silently ratchet every budget to nothing.
-  const runs = (await readRecords(id, root)).filter(
-    (r) => r.kind === 'run' && r.ok && r.measured !== false,
+  const records = (await readRecords(id, root)).filter(
+    // An unmeasured run has no token total, so it can neither set nor breach a
+    // ceiling. Treating it as zero would ratchet every budget to nothing.
+    (r) => r.kind === 'run' && r.ok && r.measured !== false && r.tokens,
   );
-  return runs.length ? runs[runs.length - 1] : null;
+  if (!records.length) return null;
+
+  // A ticket's cost is the sum of its pipeline steps -- triage, propose,
+  // tasks, implement -- not whichever record was written last. Only the most
+  // recent record per step counts: summing the whole history would
+  // double-count a re-run, so running `sdd tasks` twice would read as a
+  // ticket that cost both attempts and a ceiling could never come down.
+  const latestPerStep = new Map();
+  for (const r of records) latestPerStep.set(r.step ?? 'implement', r);
+  const current = [...latestPerStep.values()];
+
+  const sum = (pick) => current.reduce((n, r) => n + (pick(r) ?? 0), 0);
+  return {
+    ...records[records.length - 1],
+    steps: current.length,
+    tokens: {
+      input: sum((r) => r.tokens.input),
+      cache_read: sum((r) => r.tokens.cache_read),
+      cache_write: sum((r) => r.tokens.cache_write),
+      output: sum((r) => r.tokens.output),
+      thinking: sum((r) => r.tokens.thinking),
+    },
+  };
 }
 
 export async function setCeiling(id, { root = process.cwd(), raise = false } = {}) {

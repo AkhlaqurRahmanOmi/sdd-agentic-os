@@ -320,6 +320,29 @@ wrong thing; `--followup-fix` records that the change needed a follow-up.
 Both are entered by hand after the run, because neither is visible from
 inside it.
 
+### What gets recorded, and when
+
+Every model call `sdd` makes is recorded, not just the implementation run:
+
+| step | recorded by |
+|---|---|
+| `triage` / `propose` / `tasks` | the phase commands themselves |
+| `implement` | `sdd cost run` |
+
+`phase` is the matched-split arm (`baseline` / `sdd`); `step` is where in the
+pipeline the call happened. Those were conflated before, and the spec commands
+printed usage to stderr while recording nothing — which made the **sdd arm of
+the split unmeasurable**, since its total is triage + propose + tasks +
+implement and only the last was ever wrapped.
+
+A ticket's cost is the **sum of its steps**, and only the most recent record
+per step counts. Summing the whole history would double-count a re-run, so
+running `sdd tasks` twice would read as a ticket that cost both attempts and a
+ceiling could never come down.
+
+`sdd cost report` shows a per-step breakdown, which is the table that reveals a
+"cheap model" step costing more than everything else combined.
+
 ### Reading the table
 
 ```sh

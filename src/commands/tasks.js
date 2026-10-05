@@ -5,6 +5,7 @@ import { TASKS_SCHEMA, tasksPrompt } from '../agent/prompts.js';
 import { loadConfig } from '../spec/config.js';
 import { recordAgentRun } from '../cost/store.js';
 import { REQ_ID, parseRequirements } from '../spec/parse.js';
+import { parseAnchor } from '../spec/traceability.js';
 import { changeDir, evidencePath, requirementsPath, taskCardsDir, tasksIndexPath } from '../spec/paths.js';
 import { renderEvidenceSkeleton, renderState, renderTaskCard, renderTasksIndex } from '../spec/render.js';
 import { readIfPresent, requireFlag, requireString } from './shared.js';
@@ -78,6 +79,37 @@ export async function tasksCommand(
     if (unknown.length) {
       throw new Error(`${task.id} references requirements that do not exist: ${unknown.join(', ')}`);
     }
+  }
+
+  // Anchors are checked here, before anything is written, for the same reason
+  // requirement coverage is: a card that names `src/x.ts (existing)` or writes
+  // a paragraph in the parentheses passes decomposition and then fails
+  // `sdd index check` later, a long way from the cause. The format is stated
+  // in the prompt; this is what makes it binding.
+  const badAnchors = [];
+  for (const task of data.tasks) {
+    for (const entry of task.files ?? []) {
+      const anchor = parseAnchor(entry);
+      if (anchor.malformed) {
+        badAnchors.push(`${task.id}: not a file path — ${entry.slice(0, 80)}`);
+        continue;
+      }
+      // A path with no extension and no slash is usually prose that lost its
+      // path, and an anchor pointing at nothing is worse than no anchor.
+      if (!anchor.file.includes('/') && !anchor.file.includes('.')) {
+        badAnchors.push(`${task.id}: "${anchor.file}" does not look like a path`);
+      }
+    }
+  }
+  if (badAnchors.length && f.force !== true) {
+    throw new Error(
+      `${badAnchors.length} task card anchor(s) are not usable:\n` +
+        `${badAnchors.map((b) => `  - ${b}`).join('\n')}\n` +
+        'Each entry must read `path/to/file.ts (symbolName)` — one identifier, ' +
+        'no prose\nin the parentheses. Re-run `sdd tasks`, or pass --force to ' +
+        'write the cards anyway\nand accept that `sdd index check` will report ' +
+        'these.',
+    );
   }
   const covered = new Set(data.tasks.flatMap((t) => t.reqs));
   const uncovered = reqIds.filter((r) => !covered.has(r));

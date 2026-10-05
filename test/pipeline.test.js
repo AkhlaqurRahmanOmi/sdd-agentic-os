@@ -173,3 +173,26 @@ test('requirements.md comes back in EARS form and parses', async () => {
   assert.match(md, /## REQ-AUTH-001/);
   assert.match(md, /shall/);
 });
+
+test('tasks refuses to write cards whose anchors are not usable', async () => {
+  const root = await scratch('sdd-anchor-');
+  await initCommand([], io(root));
+  const ticket = await ticketAt(root, 't.md', 'Lock out repeated failed logins');
+  await triageCommand([], { ...io(root), flags: { ticket, id: 'AUTH-9' } });
+  await proposeCommand([], { ...io(root), flags: { id: 'AUTH-9' } });
+
+  // A model that writes `(new)` and loose prose where anchors belong.
+  const previous = process.env.SDD_CLAUDE_BIN;
+  process.env.SDD_CLAUDE_BIN = path.join(here, 'fixtures', 'fake-claude-bad-anchors.js');
+  try {
+    await assert.rejects(
+      tasksCommand([], { ...io(root), flags: { id: 'AUTH-9', 'bypass-gate': 'test' } }),
+      /anchor\(s\) are not usable/,
+    );
+    // Nothing was written: the failure lands at decomposition, not later at
+    // `sdd index check` a long way from the cause.
+    await assert.rejects(readdir(taskCardsDir('AUTH-9', root)), { code: 'ENOENT' });
+  } finally {
+    process.env.SDD_CLAUDE_BIN = previous;
+  }
+});

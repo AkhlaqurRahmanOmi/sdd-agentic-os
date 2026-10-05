@@ -107,9 +107,12 @@ these requirements, not the other cards. So each card must stand alone:
 - "reqs": the REQ ids this task satisfies, exactly as written below.
 - "requirement_text": the full text of those requirements, copied verbatim.
   This is what makes the card self-contained; do not paraphrase or summarise it.
-- "files": the files to change. Name the symbol (function, class, export) rather
-  than a line number where you can — line numbers go stale on the next commit
-  above them.
+- "files": the files to change, one per entry, formatted exactly as
+  \`path/to/file.ts (symbolName)\` — a path, a space, and one identifier in
+  parentheses. Name the symbol (function, class, export) rather than a line
+  number: line numbers go stale on the next commit above them. Put any
+  explanation in "done_when", never inside the parentheses; a paragraph there
+  is not an anchor and cannot be checked.
 - "test": the single command that proves this task is done${testCommandHint ? `, e.g. \`${testCommandHint}\`` : ''}.
 - "done_when": concrete, checkable conditions. Not "works correctly".
 

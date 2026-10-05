@@ -124,3 +124,53 @@ test('the drift message says not to regenerate around it', async () => {
   assert.match(out, /A stale index is worse than none/);
   assert.match(out, /do not regenerate around it/);
 });
+
+test('a paragraph inside the parentheses does not become the file path', () => {
+  // A real card wrote a whole explanation inside the parens, quotes and
+  // brackets included. The old whole-entry regex failed to match and the
+  // paragraph became the path, which reached open() and threw ENAMETOOLONG.
+  const anchor = parseAnchor(
+    "src/auth/sign-in.provider.ts (SignInProvider.signIn — throws UnauthorizedException('Invalid credentials') when no user is found)",
+  );
+  assert.equal(anchor.file, 'src/auth/sign-in.provider.ts');
+  assert.equal(anchor.symbol, 'SignInProvider.signIn');
+  assert.notEqual(anchor.malformed, true);
+});
+
+test('an anchor too long to be a path is flagged, not opened', async () => {
+  const anchor = parseAnchor('x'.repeat(5000));
+  assert.equal(anchor.malformed, true);
+
+  const drifted = await checkDrift(
+    { changes: { C: { 'REQ-A-001': { anchors: [anchor] } } } },
+    '/tmp',
+  );
+  assert.equal(drifted.length, 1);
+  assert.match(drifted[0].reason, /not a usable file path/);
+});
+
+test('an unopenable path is reported as drift rather than crashing the check', async () => {
+  const drifted = await checkDrift(
+    { changes: { C: { 'REQ-A-001': { anchors: [{ file: 'a\u0000b', symbol: null }] } } } },
+    '/tmp',
+  );
+  assert.equal(drifted.length, 1);
+});
+
+test('a Class.method anchor matches a class and method declared separately', async () => {
+  // The dotted form never appears literally in source, so searching for the
+  // joined string marked every such anchor as drift.
+  const { symbolPresent } = await import('../src/spec/traceability.js');
+  const src = 'export class RefreshTokenProvider {\n  async refreshTokens(dto) {}\n}\n';
+  assert.equal(symbolPresent(src, 'RefreshTokenProvider.refreshTokens'), true);
+  assert.equal(symbolPresent(src, 'RefreshTokenProvider.revokeTokens'), false);
+  assert.equal(symbolPresent(src, 'OtherProvider.refreshTokens'), false);
+});
+
+test('a reserved word in the parentheses is prose, not a missing symbol', () => {
+  // Cards wrote `(new)` and `(new file — ...)`. Reporting those as drift
+  // produces findings no code edit could ever fix.
+  assert.equal(parseAnchor('src/audit/audit.module.ts (new)').symbol, null);
+  assert.equal(parseAnchor('src/audit/audit.module.ts (new file, created here)').symbol, null);
+  assert.equal(parseAnchor('src/audit/audit.service.ts (AuditService)').symbol, 'AuditService');
+});
